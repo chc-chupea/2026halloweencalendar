@@ -197,7 +197,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
     import { getFirestore, doc, runTransaction, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBKSYZgaSVTu-HO_lS1Tp2eFjSjMuOONNI",
@@ -585,45 +585,114 @@
       return {dayKey,shortId,queueId:`${dayKey}-${shortId}`};
     }
 
+    function canvasToPngBlob(){
+      return new Promise((resolve,reject)=>{
+        canvas.toBlob(blob=>{
+          if(blob) resolve(blob);
+          else reject(new Error("canvas-toBlob-failed"));
+        },"image/png");
+      });
+    }
+
+    function sleep(ms){
+      return new Promise(resolve=>setTimeout(resolve,ms));
+    }
+
+    async function uploadBlobWithRetry(storageRef, blob, maxAttempts=3){
+      let lastError=null;
+      for(let attempt=1; attempt<=maxAttempts; attempt++){
+        try{
+          return await uploadBytes(storageRef, blob, {contentType:"image/png"});
+        }catch(err){
+          lastError=err;
+          if(attempt<maxAttempts) await sleep(700 * attempt);
+        }
+      }
+      throw lastError || new Error("upload-failed");
+    }
+
     function setStatus(type,html){statusEl.className=`status ${type}`;statusEl.innerHTML=html;}
 
     document.getElementById("sendBtn").addEventListener("click",async()=>{
       if(!photo){alert("PHOTOを選んでください。");return;}
       if(!document.getElementById("consent").checked){alert("保存についての同意欄を確認してください。");return;}
       const copies=Number(document.getElementById("copies").value||1);
-      if(!confirm(`PRINT QTY：${copies}枚\nこの仕上がりで印刷受付へ送信します。\n送信後は変更できません。`)) return;
+      if(!confirm(`PRINT QTY：${copies}枚
+この仕上がりで印刷受付へ送信します。
+送信後は変更できません。`)) return;
+
       const btn=document.getElementById("sendBtn");
       btn.disabled=true;
       setStatus("sending","SENDING…<br>受付番号が表示されるまで、この画面を閉じないでください。");
+
+      let issued=null;
+      let orderRef=null;
+
       try{
         draw();
-        const issued=await issueQueue();
+
+        // 受付番号を発行
+        issued=await issueQueue();
         drawQueueNumber(issued.shortId);
-        const pngDataUrl=canvas.toDataURL("image/png");
+
+        // DataURLではなくBlobでPNGを生成（スマホのメモリ負荷を抑える）
+        const pngBlob=await canvasToPngBlob();
+
         const storagePath=`orders/${issued.dayKey}/calendar-${issued.shortId}.png`;
         const storageRef=ref(storage,storagePath);
-        await uploadString(storageRef,pngDataUrl,"data_url",{contentType:"image/png"});
-        const imageUrl=await getDownloadURL(storageRef);
-        await setDoc(doc(db,"orders",issued.queueId),{
+        orderRef=doc(db,"orders",issued.queueId);
+
+        // 画像送信前に受付記録を作る。
+        // 途中で画像送信に失敗しても、管理画面に受付番号が残る。
+        await setDoc(orderRef,{
           queueId:issued.queueId,
           shortId:issued.shortId,
           displayNo:Number(issued.shortId.slice(1)),
           dayKey:issued.dayKey,
           copies,
           template:"A4-photo-calendar-2026-Nov-Dec",
-          imageUrl,
+          imageUrl:"",
           storagePath,
           width:W,height:H,
-          status:"WAIT",
-          createdAt:serverTimestamp(),updatedAt:serverTimestamp(),
+          status:"UPLOADING",
+          createdAt:serverTimestamp(),
+          updatedAt:serverTimestamp(),
           source:SOURCE,
           productName:"ハロウィン フォトカレンダー 2026"
         });
-        setStatus("success",`ORDER RECEIVED<span class="number">${issued.shortId}</span>受付番号をスクリーンショットで保存してください。<br>A4印刷データを送信しました。`);
+
+        // 最大3回まで自動再試行
+        await uploadBlobWithRetry(storageRef,pngBlob,3);
+        const imageUrl=await getDownloadURL(storageRef);
+
+        // 画像URLが取れた時点で通常受付へ
+        await setDoc(orderRef,{
+          imageUrl,
+          status:"WAIT",
+          updatedAt:serverTimestamp()
+        },{merge:true});
+
+        setStatus("success",`RECEIVED<span class="number">${issued.shortId}</span>受付番号をスクリーンショットで保存してください。<br>A4印刷データの送信が完了しました。`);
         btn.style.display="none";
+
       }catch(err){
         console.error(err);
-        setStatus("error",`SEND ERROR — 通信状態を確認して、もう一度お試しください。<br><small>${String(err?.code||"")}</small>`);
+
+        // Firestoreまで到達できる場合は「画像送信失敗」を管理側に残す
+        if(orderRef){
+          try{
+            await setDoc(orderRef,{
+              status:"UPLOAD_ERROR",
+              uploadErrorCode:String(err?.code||err?.message||"unknown"),
+              updatedAt:serverTimestamp()
+            },{merge:true});
+          }catch(e){
+            console.error("UPLOAD_ERROR記録にも失敗:",e);
+          }
+        }
+
+        const no = issued?.shortId ? `<br>受付番号：<b>${issued.shortId}</b>` : "";
+        setStatus("error",`SEND ERROR — 画像送信が完了していません。${no}<br>通信状態を確認して、もう一度送信してください。<br><small>${String(err?.code||err?.message||"")}</small>`);
         btn.disabled=false;
       }
     });
