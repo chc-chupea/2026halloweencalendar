@@ -434,6 +434,16 @@
       drawCalendar();
     }
 
+    function drawQueueNumber(shortId){
+      ctx.save();
+      ctx.textAlign="right";
+      ctx.textBaseline="bottom";
+      ctx.fillStyle="#746b7b";
+      ctx.font="700 34px sans-serif";
+      ctx.fillText(shortId, W - 52, H - 34);
+      ctx.restore();
+    }
+
     function updateQuality(){
       if(!photo){ qualityEl.className="quality"; qualityEl.textContent=""; return; }
       const s = baseScale * userScale;
@@ -588,6 +598,7 @@
       try{
         draw();
         const issued=await issueQueue();
+        drawQueueNumber(issued.shortId);
         const pngDataUrl=canvas.toDataURL("image/png");
         const storagePath=`orders/${issued.dayKey}/calendar-${issued.shortId}.png`;
         const storageRef=ref(storage,storagePath);
