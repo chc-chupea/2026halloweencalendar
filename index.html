@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1322" />
+  <title>ハロウィン フォトカレンダー 2026</title>
+  <style>
+    :root{
+      --ink:#231b2b;
+      --muted:#746b7b;
+      --orange:#ed7a20;
+      --orange-dark:#c95d0d;
+      --cream:#fffaf3;
+      --paper:#ffffff;
+      --line:#e5dcd2;
+      --green:#2d7a50;
+      --danger:#b42318;
+      --shadow:0 12px 34px rgba(33,20,40,.12);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;
+      color:var(--ink);
+      background:linear-gradient(180deg,#f7efe6 0,#fffaf4 35%,#f6f0f7 100%);
+    }
+    .shell{max-width:980px;margin:0 auto;padding:18px 14px 56px}
+    .hero{
+      background:linear-gradient(135deg,#1f1729,#3b2046 62%,#5c2a43);
+      color:#fff;border-radius:26px;padding:24px 20px;box-shadow:var(--shadow);overflow:hidden;position:relative;
+    }
+    .hero:after{content:"10.31";position:absolute;right:18px;top:8px;font-size:74px;font-weight:900;letter-spacing:-.06em;opacity:.10;transform:rotate(0deg)}
+    .eyebrow{font-size:12px;letter-spacing:.18em;font-weight:800;color:#ffc783}
+
+    .section-kicker{font-size:10px;font-weight:900;letter-spacing:.18em;color:var(--orange);text-transform:uppercase;margin-bottom:3px}
+    .step b{display:block;font-size:10px;letter-spacing:.14em;margin-bottom:4px}
+    .btn-icon{width:18px;height:18px;vertical-align:-4px;margin-right:7px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .control-label{font-size:11px;font-weight:900;letter-spacing:.12em;color:#62566a}
+    .hero .edition{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.14em;color:#ffc783}
+    .hero .edition:before{content:"";width:24px;height:1px;background:currentColor;opacity:.85}
+    h1{font-size:clamp(26px,6vw,42px);line-height:1.12;margin:8px 0 8px}
+    .hero p{margin:0;color:#eee2f1;font-size:14px;line-height:1.65;max-width:680px}
+    .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+    .step{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px;font-size:12px;line-height:1.4}
+    .step b{color:#ffd39d}
+    .card{background:rgba(255,255,255,.96);border:1px solid rgba(83,48,84,.08);border-radius:22px;padding:18px;margin-top:16px;box-shadow:var(--shadow)}
+    .card h2{font-size:20px;margin:2px 0 12px;letter-spacing:.01em}
+    .hint{font-size:12px;color:var(--muted);line-height:1.6}
+    .file-label,.primary,.secondary,.ghost,.danger-btn{
+      width:100%;border:0;border-radius:14px;padding:14px 16px;font-size:16px;font-weight:800;cursor:pointer;text-align:center;display:block;text-decoration:none;
+    }
+    .file-label,.primary{background:linear-gradient(135deg,var(--orange),var(--orange-dark));color:#fff;box-shadow:0 8px 18px rgba(225,103,21,.22)}
+    .secondary{background:#2b2035;color:#fff}
+    .ghost{background:#f5eff7;color:#3b2844;border:1px solid #e4d8e8}
+    .danger-btn{background:#fff0ee;color:var(--danger);border:1px solid #f3ccc7}
+    input[type=file]{display:none}
+    .controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:12px}
+    .zoom-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;margin-top:12px}
+    input[type=range]{width:100%;accent-color:var(--orange)}
+    .correction-panel{margin-top:14px;padding:14px;border:1px solid #eadfe9;border-radius:16px;background:#fbf8fc}
+    .correction-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .correction-title{font-weight:900;font-size:14px;color:#3b2844}
+    .correction-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .correction-actions button{padding:11px 10px;font-size:14px}
+    .adjust-grid{display:grid;gap:9px;margin-top:12px}
+    .adjust-row{display:grid;grid-template-columns:82px 1fr 48px;gap:9px;align-items:center}
+    .adjust-row label{font-size:12px;font-weight:800;color:#62566a}
+    .adjust-value{text-align:right;font-size:12px;font-weight:800;color:#62566a;font-variant-numeric:tabular-nums}
+    .correction-note{display:none;margin-top:10px;padding:9px 10px;border-radius:10px;background:#edf8f1;color:#25613f;font-size:12px;line-height:1.5}
+    .correction-note.show{display:block}
+    .canvas-wrap{margin-top:12px;background:#2a2230;border-radius:18px;padding:10px;overflow:hidden}
+    canvas{display:block;width:100%;height:auto;background:#fff;border-radius:9px;touch-action:none;user-select:none;-webkit-user-select:none}
+    .quality{font-size:12px;border-radius:10px;padding:9px 10px;margin-top:10px;display:none}
+    .quality.ok{display:block;background:#edf8f1;color:#25613f}
+    .quality.warn{display:block;background:#fff4e7;color:#8a4a00}
+    .preview-box{display:none;text-align:center}
+    .preview-box img{width:min(100%,500px);border:1px solid #ddd;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);background:#fff}
+    .order-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    label.small{font-size:12px;color:var(--muted);font-weight:700;display:block;margin-bottom:6px}
+    select{width:100%;padding:13px;border:1px solid #d9d0dc;border-radius:12px;background:#fff;font-size:16px}
+    .notice{font-size:13px;line-height:1.6;padding:12px;border-radius:12px;background:#f7f2f8;color:#56445e;margin-top:12px}
+    .status{display:none;margin-top:12px;padding:16px;border-radius:14px;line-height:1.7;text-align:center;font-weight:700}
+    .status.sending{display:block;background:#fff4e6;color:#7a4300}
+    .status.success{display:block;background:#ecf8f0;color:#205f3b}
+    .status.error{display:block;background:#fff0ef;color:#9a221a}
+    .number{font-size:34px;letter-spacing:.08em;color:#173f2a;display:block;margin:7px 0}
+    .privacy{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.55}
+    .privacy input{margin-top:3px;transform:scale(1.2)}
+    footer{text-align:center;color:#8e8393;font-size:10px;line-height:1.55;margin-top:22px}
+    @media(max-width:640px){
+      .steps{grid-template-columns:1fr 1fr}
+      .controls{grid-template-columns:1fr 1fr}
+      .controls .wide{grid-column:1/-1}
+      .order-grid{grid-template-columns:1fr}
+      .card{padding:15px}
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="edition">HALLOWEEN EDITION / 2026</div>
+      <h1>HALLOWEEN<br>PHOTO CALENDAR</h1>
+      <p>お気に入りの仮装フォトを、11月・12月のA4カレンダーに。写真を選んで、整えて、送るだけ。</p>
+      <div class="steps">
+        <div class="step"><b>01 / SELECT</b>写真を選ぶ</div>
+        <div class="step"><b>02 / EDIT</b>仕上がりを整える</div>
+        <div class="step"><b>03 / PREVIEW</b>完成を確認する</div>
+        <div class="step"><b>04 / SEND</b>印刷受付へ送る</div>
+      </div>
+    </section>
+
+    <section class="card" id="photoCard">
+      <div class="section-kicker">01 / SELECT</div>
+      <h2>PHOTOを選ぶ</h2>
+      <label class="file-label" for="photoInput"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="4"/></svg>写真を撮る / ライブラリから選ぶ</label>
+      <input id="photoInput" type="file" accept="image/*" />
+      <p class="hint">縦・横どちらでもOK。選んだ写真は、A4上半分に合わせて自動レイアウトします。</p>
+    </section>
+
+    <section class="card" id="editCard">
+      <div class="section-kicker">02 / EDIT</div>
+      <h2>PHOTOを整える</h2>
+      <div class="canvas-wrap">
+        <canvas id="calendarCanvas" width="2480" height="3508" aria-label="A4カレンダープレビュー"></canvas>
+      </div>
+      <div class="zoom-row">
+        <span>小</span><input id="zoom" type="range" min="50" max="300" value="100" /><span>大</span>
+      </div>
+
+      <div class="correction-panel" aria-label="写真補正">
+        <div class="correction-head">
+          <div class="correction-title">PHOTO TUNE</div>
+        </div>
+        <div class="correction-actions">
+          <button class="secondary" id="autoEnhance" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>AUTO TUNE</button>
+          <button class="ghost" id="resetCorrection" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/></svg>RESET</button>
+        </div>
+        <div class="adjust-grid">
+          <div class="adjust-row">
+            <label for="brightness">LIGHT</label>
+            <input id="brightness" type="range" min="70" max="140" value="100" />
+            <span class="adjust-value" id="brightnessValue">100%</span>
+          </div>
+          <div class="adjust-row">
+            <label for="contrast">CONTRAST</label>
+            <input id="contrast" type="range" min="70" max="140" value="100" />
+            <span class="adjust-value" id="contrastValue">100%</span>
+          </div>
+          <div class="adjust-row">
+            <label for="saturation">COLOR</label>
+            <input id="saturation" type="range" min="70" max="150" value="100" />
+            <span class="adjust-value" id="saturationValue">100%</span>
+          </div>
+        </div>
+        <div id="correctionNote" class="correction-note"></div>
+      </div>
+
+      <div class="controls">
+        <button class="ghost" id="zoomOut" type="button">− ZOOM</button>
+        <button class="ghost" id="zoomIn" type="button">＋ ZOOM</button>
+        <button class="ghost wide" id="resetPhoto" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="8"/></svg>CENTER</button>
+      </div>
+      <div id="quality" class="quality"></div>
+      <p class="hint">写真をドラッグして位置調整。ピンチまたはホイールでサイズを整えます。</p>
+      <button class="primary" id="previewBtn" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>PREVIEW</button>
+    </section>
+
+    <section class="card preview-box" id="previewCard">
+      <div class="section-kicker">03 / PREVIEW</div>
+      <h2>FINAL PREVIEW</h2>
+      <img id="previewImage" alt="完成カレンダー" />
+      <div class="notice">A4縦・300dpi相当で出力します。気になるところがあれば、上のEDITに戻って調整できます。</div>
+      <div class="order-grid">
+        <div>
+          <label class="small" for="copies">PRINT QTY</label>
+          <select id="copies">
+            <option value="1">1枚</option><option value="2">2枚</option><option value="3">3枚</option><option value="4">4枚</option><option value="5">5枚</option>
+            <option value="6">6枚</option><option value="7">7枚</option><option value="8">8枚</option><option value="9">9枚</option><option value="10">10枚</option>
+          </select>
+        </div>
+        <div>
+          <label class="small">FORMAT</label>
+          <div class="notice" style="margin:0;padding:11px 12px">A4 PORTRAIT / NOV + DEC</div>
+        </div>
+      </div>
+      <label class="privacy"><input type="checkbox" id="consent" /><span>印刷受付のため、完成画像が保存されることに同意します。</span></label>
+      <button class="secondary" id="sendBtn" type="button" style="margin-top:12px"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4z"/></svg>この仕上がりで送信</button>
+      <div id="status" class="status"></div>
+    </section>
+
+    <footer>HALLOWEEN PHOTO CALENDAR 2026 · A4 PRINT EDITION</footer>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+    import { getFirestore, doc, runTransaction, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBKSYZgaSVTu-HO_lS1Tp2eFjSjMuOONNI",
+      authDomain: "my-uchiwa-queue.firebaseapp.com",
+      projectId: "my-uchiwa-queue",
+      storageBucket: "my-uchiwa-queue.firebasestorage.app",
+      messagingSenderId: "245883628081",
+      appId: "1:245883628081:web:ab7f00f01ba256ebca8310",
+      measurementId: "G-W4S3EKL9TY"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    const YEAR = 2026;
+    const W = 2480;
+    const H = 3508;
+    const PHOTO_H = Math.floor(H / 2);
+    const SOURCE = "halloween-photo-calendar-2026";
+
+    const canvas = document.getElementById("calendarCanvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const photoInput = document.getElementById("photoInput");
+    const zoomRange = document.getElementById("zoom");
+    const qualityEl = document.getElementById("quality");
+    const previewCard = document.getElementById("previewCard");
+    const previewImage = document.getElementById("previewImage");
+    const statusEl = document.getElementById("status");
+    const brightnessRange = document.getElementById("brightness");
+    const contrastRange = document.getElementById("contrast");
+    const saturationRange = document.getElementById("saturation");
+    const brightnessValue = document.getElementById("brightnessValue");
+    const contrastValue = document.getElementById("contrastValue");
+    const saturationValue = document.getElementById("saturationValue");
+    const correctionNote = document.getElementById("correctionNote");
+
+    let photo = null;
+    let photoX = W / 2;
+    let photoY = PHOTO_H / 2;
+    let baseScale = 1;
+    let userScale = 1;
+    let previewUrl = null;
+    let pointerMap = new Map();
+    let lastPinchDistance = null;
+    let dragLast = null;
+    let correction = { brightness:100, contrast:100, saturation:100 };
+
+    function clamp(value,min,max){ return Math.max(min,Math.min(max,value)); }
+
+    function syncCorrectionUI(){
+      brightnessRange.value = correction.brightness;
+      contrastRange.value = correction.contrast;
+      saturationRange.value = correction.saturation;
+      brightnessValue.textContent = `${correction.brightness}%`;
+      contrastValue.textContent = `${correction.contrast}%`;
+      saturationValue.textContent = `${correction.saturation}%`;
+    }
+
+    function setCorrectionNote(message=""){
+      correctionNote.textContent = message;
+      correctionNote.classList.toggle("show", Boolean(message));
+    }
+
+    function resetCorrection(silent=false){
+      correction = { brightness:100, contrast:100, saturation:100 };
+      syncCorrectionUI();
+      setCorrectionNote(silent ? "" : "RESETしました。補正前の状態に戻っています。");
+      draw();
+    }
+
+    function analyzePhotoForAutoCorrection(){
+      if(!photo) return null;
+      const sample = document.createElement("canvas");
+      const size = 96;
+      sample.width = size; sample.height = size;
+      const sc = sample.getContext("2d", {willReadFrequently:true});
+      sc.drawImage(photo,0,0,size,size);
+      const data = sc.getImageData(0,0,size,size).data;
+      let lumSum=0, lumSqSum=0, chromaSum=0, count=0;
+      for(let i=0;i<data.length;i+=4){
+        const r=data[i], g=data[i+1], b=data[i+2];
+        const lum=0.2126*r+0.7152*g+0.0722*b;
+        lumSum += lum; lumSqSum += lum*lum;
+        chromaSum += Math.max(r,g,b)-Math.min(r,g,b);
+        count++;
+      }
+      const mean = lumSum/count;
+      const variance = Math.max(0,lumSqSum/count-mean*mean);
+      const std = Math.sqrt(variance);
+      const chroma = chromaSum/count;
+
+      let brightness = 100;
+      if(mean < 115) brightness = clamp(Math.round(100+(115-mean)*0.28),100,125);
+      else if(mean > 195) brightness = clamp(Math.round(100-(mean-195)*0.12),92,100);
+
+      let contrast = 100;
+      if(std < 48) contrast = clamp(Math.round(100+(48-std)*0.55),100,120);
+      else if(std > 82) contrast = clamp(Math.round(100-(std-82)*0.18),94,100);
+
+      const saturation = chroma < 42 ? 114 : chroma < 70 ? 109 : 105;
+      return {brightness,contrast,saturation};
+    }
+
+    function roundRectPath(c, x, y, w, h, r){
+      c.beginPath();
+      c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+      c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+    }
+
+    function fitPhoto(){
+      if(!photo) return;
+      baseScale = Math.max(W / photo.naturalWidth, PHOTO_H / photo.naturalHeight);
+      userScale = 1;
+      photoX = W / 2;
+      photoY = PHOTO_H / 2;
+      zoomRange.value = 100;
+      draw();
+      updateQuality();
+    }
+
+    function drawPhoto(){
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0,0,W,PHOTO_H);
+      ctx.clip();
+      ctx.fillStyle="#211725";
+      ctx.fillRect(0,0,W,PHOTO_H);
+      if(photo){
+        const s = baseScale * userScale;
+        const dw = photo.naturalWidth * s;
+        const dh = photo.naturalHeight * s;
+        ctx.filter = `brightness(${correction.brightness}%) contrast(${correction.contrast}%) saturate(${correction.saturation}%)`;
+        ctx.drawImage(photo, photoX - dw/2, photoY - dh/2, dw, dh);
+        ctx.filter = "none";
+      } else {
+        ctx.fillStyle="#3a2940";
+        ctx.fillRect(0,0,W,PHOTO_H);
+        ctx.fillStyle="#fff";
+        ctx.globalAlpha=.9;
+        ctx.textAlign="center";
+        ctx.font="700 76px sans-serif";
+        ctx.fillText("HALLOWEEN PHOTO",W/2,PHOTO_H/2-20);
+        ctx.globalAlpha=.65;
+        ctx.font="44px sans-serif";
+        ctx.fillText("YOUR PHOTO / DROP HERE",W/2,PHOTO_H/2+68);
+      }
+      ctx.restore();
+    }
+
+    function monthData(year, monthIndex){
+      const first = new Date(year, monthIndex, 1).getDay();
+      const days = new Date(year, monthIndex + 1, 0).getDate();
+      return { first, days };
+    }
+
+    function drawMonth(x, y, width, height, month){
+      const pad = 58;
+      const headerH = 190;
+      const dowH = 100;
+      const gridX = x + pad;
+      const gridY = y + headerH + dowH;
+      const gridW = width - pad*2;
+      const gridH = height - headerH - dowH - 56;
+      const colW = gridW / 7;
+      const rowH = gridH / 6;
+      const { first, days } = monthData(YEAR, month-1);
+
+      ctx.save();
+      ctx.fillStyle="#fff";
+      ctx.fillRect(x,y,width,height);
+
+      ctx.fillStyle="#2c2133";
+      ctx.textAlign="left";
+      ctx.font="800 88px sans-serif";
+      ctx.fillText(`${month}月`,x+pad,y+112);
+      ctx.fillStyle="#ed7a20";
+      ctx.font="800 34px sans-serif";
+      ctx.fillText("2026",x+pad,y+160);
+
+      ctx.strokeStyle="#e7ded6";
+      ctx.lineWidth=4;
+      ctx.beginPath();ctx.moveTo(x+pad,y+headerH-4);ctx.lineTo(x+width-pad,y+headerH-4);ctx.stroke();
+
+      const dows=["日","月","火","水","木","金","土"];
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.font="700 34px sans-serif";
+      dows.forEach((d,i)=>{
+        ctx.fillStyle=i===0?"#c43a32":i===6?"#3267b1":"#5d5262";
+        ctx.fillText(d,gridX+colW*(i+.5),y+headerH+dowH/2);
+      });
+
+      ctx.strokeStyle="#eee6df";
+      ctx.lineWidth=3;
+      for(let i=0;i<=7;i++){
+        const gx=gridX+colW*i;ctx.beginPath();ctx.moveTo(gx,gridY);ctx.lineTo(gx,gridY+gridH);ctx.stroke();
+      }
+      for(let r=0;r<=6;r++){
+        const gy=gridY+rowH*r;ctx.beginPath();ctx.moveTo(gridX,gy);ctx.lineTo(gridX+gridW,gy);ctx.stroke();
+      }
+
+      ctx.font="700 47px sans-serif";
+      for(let day=1;day<=days;day++){
+        const cell=first+day-1;
+        const col=cell%7;
+        const row=Math.floor(cell/7);
+        const cx=gridX+colW*col+18;
+        const cy=gridY+rowH*row+32;
+        ctx.textAlign="left";ctx.textBaseline="top";
+        const isHoliday = month === 11 && (day === 3 || day === 23);
+        ctx.fillStyle=(col===0 || isHoliday)?"#c43a32":col===6?"#3267b1":"#342b38";
+        ctx.fillText(String(day),cx,cy);
+      }
+      ctx.restore();
+    }
+
+    function drawCalendar(){
+      const y = PHOTO_H;
+      const h = H - PHOTO_H;
+      ctx.fillStyle="#fff";ctx.fillRect(0,y,W,h);
+      ctx.fillStyle="#ed7a20";ctx.fillRect(0,y,W,18);
+      const gap = 28;
+      const side = 34;
+      const monthW = (W - side*2 - gap) / 2;
+      drawMonth(side,y+28,monthW,h-50,11);
+      drawMonth(side+monthW+gap,y+28,monthW,h-50,12);
+      ctx.strokeStyle="#ded3ca";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(W/2,y+78);ctx.lineTo(W/2,H-52);ctx.stroke();
+    }
+
+    function draw(){
+      ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);
+      drawPhoto();
+      drawCalendar();
+    }
+
+    function updateQuality(){
+      if(!photo){ qualityEl.className="quality"; qualityEl.textContent=""; return; }
+      const s = baseScale * userScale;
+      const sourcePixelsAcross = W / s;
+      const sourcePixelsHigh = PHOTO_H / s;
+      const enough = photo.naturalWidth >= Math.min(sourcePixelsAcross, W*.78) && photo.naturalHeight >= Math.min(sourcePixelsHigh, PHOTO_H*.78);
+      qualityEl.className = "quality " + (enough ? "ok" : "warn");
+      qualityEl.textContent = enough ? "PRINT QUALITY / GOOD — このまま印刷できます。" : "PRINT QUALITY / LOW — できれば元の高画質写真を選んでください。";
+    }
+
+    photoInput.addEventListener("change", e=>{
+      const file=e.target.files?.[0];
+      if(!file) return;
+      const url=URL.createObjectURL(file);
+      const img=new Image();
+      img.onload=()=>{
+        photo=img;
+        resetCorrection(true);
+        fitPhoto();
+        URL.revokeObjectURL(url);
+        document.getElementById("editCard").scrollIntoView({behavior:"smooth",block:"start"});
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);alert("PHOTOを読み込めませんでした。別の画像を選んでください。");};
+      img.src=url;
+    });
+
+    zoomRange.addEventListener("input",()=>{
+      userScale = Number(zoomRange.value)/100;
+      draw();updateQuality();
+    });
+    document.getElementById("zoomIn").addEventListener("click",()=>{
+      userScale=Math.min(3,userScale*1.1);zoomRange.value=Math.round(userScale*100);draw();updateQuality();
+    });
+    document.getElementById("zoomOut").addEventListener("click",()=>{
+      userScale=Math.max(.5,userScale/1.1);zoomRange.value=Math.round(userScale*100);draw();updateQuality();
+    });
+    document.getElementById("resetPhoto").addEventListener("click",fitPhoto);
+
+    [
+      [brightnessRange,"brightness",brightnessValue],
+      [contrastRange,"contrast",contrastValue],
+      [saturationRange,"saturation",saturationValue]
+    ].forEach(([range,key,valueEl])=>{
+      range.addEventListener("input",()=>{
+        correction[key]=Number(range.value);
+        valueEl.textContent=`${range.value}%`;
+        setCorrectionNote("");
+        draw();
+      });
+    });
+
+    document.getElementById("autoEnhance").addEventListener("click",()=>{
+      if(!photo){
+        alert("先にPHOTOを選んでください。");
+        document.getElementById("photoCard").scrollIntoView({behavior:"smooth"});
+        return;
+      }
+      const auto = analyzePhotoForAutoCorrection();
+      if(!auto) return;
+      correction = auto;
+      syncCorrectionUI();
+      setCorrectionNote("AUTO TUNEを適用しました。RESETでいつでも元に戻せます。");
+      draw();
+    });
+
+    document.getElementById("resetCorrection").addEventListener("click",()=>resetCorrection(false));
+
+    function canvasCoords(clientX,clientY){
+      const r=canvas.getBoundingClientRect();
+      return {x:(clientX-r.left)*W/r.width,y:(clientY-r.top)*H/r.height};
+    }
+
+    canvas.addEventListener("pointerdown",e=>{
+      if(!photo) return;
+      canvas.setPointerCapture?.(e.pointerId);
+      pointerMap.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointerMap.size===1){ dragLast=canvasCoords(e.clientX,e.clientY); }
+      e.preventDefault();
+    });
+    canvas.addEventListener("pointermove",e=>{
+      if(!photo || !pointerMap.has(e.pointerId)) return;
+      pointerMap.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      const pts=[...pointerMap.values()];
+      if(pts.length===1 && dragLast){
+        const p=canvasCoords(e.clientX,e.clientY);
+        photoX += p.x-dragLast.x; photoY += p.y-dragLast.y;
+        dragLast=p; draw();
+      } else if(pts.length>=2){
+        const d=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+        if(lastPinchDistance){
+          userScale=Math.max(.5,Math.min(3,userScale*(d/lastPinchDistance)));
+          zoomRange.value=Math.round(userScale*100);draw();updateQuality();
+        }
+        lastPinchDistance=d;
+      }
+      e.preventDefault();
+    });
+    function endPointer(e){
+      pointerMap.delete(e.pointerId);lastPinchDistance=null;
+      if(pointerMap.size===1){const p=[...pointerMap.values()][0];dragLast=canvasCoords(p.x,p.y);} else dragLast=null;
+    }
+    canvas.addEventListener("pointerup",endPointer);
+    canvas.addEventListener("pointercancel",endPointer);
+    canvas.addEventListener("wheel",e=>{
+      if(!photo) return;
+      userScale=Math.max(.5,Math.min(3,userScale*(e.deltaY<0?1.06:.94)));
+      zoomRange.value=Math.round(userScale*100);draw();updateQuality();e.preventDefault();
+    },{passive:false});
+
+    document.getElementById("previewBtn").addEventListener("click",()=>{
+      if(!photo){alert("先にPHOTOを選んでください。");document.getElementById("photoCard").scrollIntoView({behavior:"smooth"});return;}
+      draw();
+      canvas.toBlob(blob=>{
+        if(!blob){alert("PREVIEWを作成できませんでした。もう一度お試しください。");return;}
+        if(previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl=URL.createObjectURL(blob);
+        previewImage.src=previewUrl;
+        previewCard.style.display="block";
+        previewCard.scrollIntoView({behavior:"smooth",block:"start"});
+      },"image/png");
+    });
+
+    function getTodayKey(){
+      const d=new Date();
+      return `${String(d.getFullYear()).slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+    }
+
+    async function issueQueue(){
+      const dayKey=getTodayKey();
+      const counterRef=doc(db,"counters",`${dayKey}-calendar`);
+      const num=await runTransaction(db,async tx=>{
+        const snap=await tx.get(counterRef);
+        const current=snap.exists()?(snap.data().lastNumber||0):0;
+        const next=current+1;
+        tx.set(counterRef,{lastNumber:next,updatedAt:serverTimestamp()},{merge:true});
+        return next;
+      });
+      const shortId=`C${String(num).padStart(3,"0")}`;
+      return {dayKey,shortId,queueId:`${dayKey}-${shortId}`};
+    }
+
+    function setStatus(type,html){statusEl.className=`status ${type}`;statusEl.innerHTML=html;}
+
+    document.getElementById("sendBtn").addEventListener("click",async()=>{
+      if(!photo){alert("PHOTOを選んでください。");return;}
+      if(!document.getElementById("consent").checked){alert("保存についての同意欄を確認してください。");return;}
+      const copies=Number(document.getElementById("copies").value||1);
+      if(!confirm(`PRINT QTY：${copies}枚\nこの仕上がりで印刷受付へ送信します。\n送信後は変更できません。`)) return;
+      const btn=document.getElementById("sendBtn");
+      btn.disabled=true;
+      setStatus("sending","SENDING…<br>受付番号が表示されるまで、この画面を閉じないでください。");
+      try{
+        draw();
+        const issued=await issueQueue();
+        const pngDataUrl=canvas.toDataURL("image/png");
+        const storagePath=`orders/${issued.dayKey}/calendar-${issued.shortId}.png`;
+        const storageRef=ref(storage,storagePath);
+        await uploadString(storageRef,pngDataUrl,"data_url",{contentType:"image/png"});
+        const imageUrl=await getDownloadURL(storageRef);
+        await setDoc(doc(db,"orders",issued.queueId),{
+          queueId:issued.queueId,
+          shortId:issued.shortId,
+          displayNo:Number(issued.shortId.slice(1)),
+          dayKey:issued.dayKey,
+          copies,
+          template:"A4-photo-calendar-2026-Nov-Dec",
+          imageUrl,
+          storagePath,
+          width:W,height:H,
+          status:"WAIT",
+          createdAt:serverTimestamp(),updatedAt:serverTimestamp(),
+          source:SOURCE,
+          productName:"ハロウィン フォトカレンダー 2026"
+        });
+        setStatus("success",`ORDER RECEIVED<span class="number">${issued.shortId}</span>受付番号をスクリーンショットで保存してください。<br>A4印刷データを送信しました。`);
+        btn.style.display="none";
+      }catch(err){
+        console.error(err);
+        setStatus("error",`SEND ERROR — 通信状態を確認して、もう一度お試しください。<br><small>${String(err?.code||"")}</small>`);
+        btn.disabled=false;
+      }
+    });
+
+    syncCorrectionUI();
+    draw();
+  </script>
+</body>
+</html>

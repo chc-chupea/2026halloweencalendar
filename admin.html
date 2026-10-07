@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ハロウィンカレンダー 印刷受付</title>
+<style>
+  :root{--ink:#251d2c;--muted:#746a79;--orange:#e87521;--line:#e4dbe6;--wait:#fff1dd;--ready:#e9f6ef;--done:#f0f0f2}
+  *{box-sizing:border-box}body{margin:0;background:#f6f2f7;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+  header{position:sticky;top:0;z-index:3;background:#241a2d;color:#fff;padding:14px 16px;box-shadow:0 3px 12px rgba(0,0,0,.18)}
+  .bar{max-width:1180px;margin:auto;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  h1{font-size:18px;margin:0}.sub{font-size:11px;color:#cfc3d5}
+  button,a.btn{border:0;border-radius:10px;padding:10px 12px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-block}
+  .refresh{background:#e87521;color:#fff}.wrap{max-width:1180px;margin:18px auto;padding:0 14px 40px}
+  .filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.filter button{background:#fff;border:1px solid var(--line);color:#493a50}.filter button.active{background:#382640;color:#fff}
+  .stats{font-size:12px;color:var(--muted);margin-bottom:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 6px 20px rgba(45,31,52,.07)}
+  .thumb{aspect-ratio:210/297;background:#eee;display:flex;align-items:center;justify-content:center;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:contain;background:white}
+  .body{padding:13px}.top{display:flex;justify-content:space-between;gap:8px;align-items:center}.num{font-size:24px;font-weight:900}.badge{font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px}
+  .WAIT{background:var(--wait);color:#814900}.READY{background:var(--ready);color:#246341}.DONE{background:var(--done);color:#666}
+  .meta{font-size:12px;line-height:1.55;color:var(--muted);margin:8px 0}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.actions .wide{grid-column:1/-1}
+  .print{background:#23192b;color:#fff}.png{background:#f3edf5;color:#44304d}.ready{background:#e7f5ed;color:#23623f}.done{background:#ededf0;color:#555}.empty{padding:40px;text-align:center;color:#7b7080;background:#fff;border-radius:16px}
+</style>
+</head>
+<body>
+<header><div class="bar"><div><h1>ハロウィンカレンダー 印刷受付</h1><div class="sub">A4縦・完成PNGをそのまま印刷</div></div><button class="refresh" id="refresh">更新</button></div></header>
+<main class="wrap">
+  <div class="filter"><button class="active" data-filter="WAIT">未印刷</button><button data-filter="READY">印刷済み</button><button data-filter="DONE">受渡済み</button><button data-filter="ALL">すべて</button></div>
+  <div class="stats" id="stats">読み込み中…</div>
+  <div class="grid" id="grid"></div>
+</main>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getFirestore, collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  const firebaseConfig={apiKey:"AIzaSyBKSYZgaSVTu-HO_lS1Tp2eFjSjMuOONNI",authDomain:"my-uchiwa-queue.firebaseapp.com",projectId:"my-uchiwa-queue",storageBucket:"my-uchiwa-queue.firebasestorage.app",messagingSenderId:"245883628081",appId:"1:245883628081:web:ab7f00f01ba256ebca8310",measurementId:"G-W4S3EKL9TY"};
+  const db=getFirestore(initializeApp(firebaseConfig));
+  const SOURCE="halloween-photo-calendar-2026";
+  let all=[];let filter="WAIT";
+  const grid=document.getElementById("grid"),stats=document.getElementById("stats");
+  function tsVal(v){try{return v?.toMillis?.()||0}catch{return 0}}
+  function fmt(v){try{return v?.toDate?.().toLocaleString("ja-JP")||""}catch{return ""}}
+  async function load(){
+    stats.textContent="読み込み中…";grid.innerHTML="";
+    try{
+      const snap=await getDocs(query(collection(db,"orders"),where("source","==",SOURCE)));
+      all=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>tsVal(b.createdAt)-tsVal(a.createdAt));render();
+    }catch(e){console.error(e);stats.textContent="読み込みに失敗しました。Firebaseの権限・通信を確認してください。";grid.innerHTML='<div class="empty">データを取得できませんでした。</div>';}
+  }
+  function render(){
+    const list=filter==="ALL"?all:all.filter(x=>(x.status||"WAIT")===filter);
+    stats.textContent=`全 ${all.length}件 ／ 表示 ${list.length}件`;
+    if(!list.length){grid.innerHTML='<div class="empty">該当する受付はありません。</div>';return;}
+    grid.innerHTML=list.map(o=>`<article class="card" data-id="${o.id}">
+      <div class="thumb"><img src="${o.imageUrl}" alt="${o.shortId||o.id}"></div>
+      <div class="body"><div class="top"><div class="num">${o.shortId||o.id}</div><span class="badge ${o.status||"WAIT"}">${o.status||"WAIT"}</span></div>
+      <div class="meta">${fmt(o.createdAt)}<br>印刷枚数：<b>${o.copies||1}枚</b> ／ A4縦 2480×3508px</div>
+      <div class="actions"><button class="print" data-print="${o.imageUrl}">A4で印刷</button><a class="btn png" href="${o.imageUrl}" target="_blank" rel="noopener">PNGを開く</a>
+      <button class="ready wide" data-status="READY">印刷済みにする</button><button class="done wide" data-status="DONE">受渡済みにする</button></div></div></article>`).join("");
+  }
+  function printImage(url){
+    const w=window.open("","_blank");if(!w){alert("ポップアップがブロックされました。");return;}
+    w.document.write(`<!doctype html><html><head><title>A4印刷</title><style>@page{size:A4 portrait;margin:0}html,body{margin:0;width:210mm;height:297mm}img{width:210mm;height:297mm;object-fit:fill;display:block}</style></head><body><img src="${url}" onload="setTimeout(()=>window.print(),250)"></body></html>`);w.document.close();
+  }
+  grid.addEventListener("click",async e=>{
+    const p=e.target.closest("[data-print]");if(p){printImage(p.dataset.print);return;}
+    const s=e.target.closest("[data-status]");if(!s)return;
+    const card=e.target.closest(".card");const id=card?.dataset.id;if(!id)return;
+    s.disabled=true;try{await updateDoc(doc(db,"orders",id),{status:s.dataset.status,updatedAt:serverTimestamp()});const o=all.find(x=>x.id===id);if(o)o.status=s.dataset.status;render();}catch(err){console.error(err);alert("更新できませんでした。");s.disabled=false;}
+  });
+  document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-filter]").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.filter;render();}));
+  document.getElementById("refresh").addEventListener("click",load);
+  load();
+</script>
+</body></html>
