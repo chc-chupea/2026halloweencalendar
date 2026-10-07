@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>会場設定｜ハロウィンカレンダー</title>
+<style>
+:root{--ink:#2c2032;--muted:#766b7a;--orange:#e87521;--line:#e7dde8;--bg:#f7f3f8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;color:var(--ink)}
+.wrap{max-width:720px;margin:0 auto;padding:24px 14px 50px}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 8px 24px rgba(40,25,48,.08);margin-bottom:14px}
+h1{font-size:24px;margin:0 0 8px}.sub{font-size:13px;color:var(--muted);line-height:1.7}
+label{display:block;font-size:12px;font-weight:800;margin:16px 0 6px}
+input{width:100%;padding:13px;border:1px solid #d9cfdb;border-radius:12px;font-size:16px}
+button,a.btn{display:block;width:100%;padding:13px 15px;border-radius:13px;border:0;font-weight:900;text-align:center;text-decoration:none;margin-top:12px}
+button{background:var(--orange);color:#fff;cursor:pointer}.btn{background:#33243b;color:#fff}
+.url{font-size:12px;word-break:break-all;background:#faf7fb;border:1px solid var(--line);padding:10px;border-radius:10px;margin-top:7px}
+.ok{display:none;margin-top:12px;padding:11px;border-radius:11px;background:#ebf7ef;color:#23623e;font-weight:800}
+.note{font-size:12px;color:var(--muted);line-height:1.7}
+code{background:#f1ebf3;padding:2px 5px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>営業所・会場設定</h1>
+    <div class="sub">URLの <code>?shop=...</code> ごとに、店名と受付番号の頭文字を設定します。<br>同じFirebaseを使いながら、注文と通し番号は営業所ごとに分かれます。</div>
+
+    <label>現在の shop ID</label>
+    <div class="url" id="shopIdView"></div>
+
+    <label for="shopName">営業所・会場名</label>
+    <input id="shopName" placeholder="例：長束営業所">
+
+    <label for="shopCode">受付番号コード（1〜4文字）</label>
+    <input id="shopCode" maxlength="4" placeholder="例：N">
+    <div class="note">例：コード N の会場では <b>N001 → N002 → N003</b> と発行します。別会場は別カウンタです。</div>
+
+    <button id="saveBtn">この会場設定を保存</button>
+    <div class="ok" id="saved">保存しました。</div>
+  </div>
+
+  <div class="card">
+    <b>お客様用URL</b>
+    <div class="url" id="customerUrl"></div>
+    <a class="btn" id="customerLink" target="_blank">お客様画面を開く</a>
+
+    <b style="display:block;margin-top:18px">店舗用 admin URL</b>
+    <div class="url" id="adminUrl"></div>
+    <a class="btn" id="adminLink" target="_blank">この営業所の受付画面を開く</a>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyBKSYZgaSVTu-HO_lS1Tp2eFjSjMuOONNI",
+  authDomain:"my-uchiwa-queue.firebaseapp.com",
+  projectId:"my-uchiwa-queue",
+  storageBucket:"my-uchiwa-queue.firebasestorage.app",
+  messagingSenderId:"245883628081",
+  appId:"1:245883628081:web:ab7f00f01ba256ebca8310",
+  measurementId:"G-W4S3EKL9TY"
+};
+const db=getFirestore(initializeApp(firebaseConfig));
+const params=new URLSearchParams(location.search);
+const shopId=(params.get("shop")||"main").replace(/[^a-zA-Z0-9_-]/g,"")||"main";
+const ref=doc(db,"settings",shopId);
+
+const shopName=document.getElementById("shopName");
+const shopCode=document.getElementById("shopCode");
+document.getElementById("shopIdView").textContent=shopId;
+
+function updateLinks(){
+  const base=location.href.split("?")[0].replace(/settings\.html$/,"");
+  const customer=`${base}index.html?shop=${encodeURIComponent(shopId)}`;
+  const admin=`${base}admin.html?shop=${encodeURIComponent(shopId)}`;
+  document.getElementById("customerUrl").textContent=customer;
+  document.getElementById("adminUrl").textContent=admin;
+  document.getElementById("customerLink").href=customer;
+  document.getElementById("adminLink").href=admin;
+}
+updateLinks();
+
+async function load(){
+  try{
+    const snap=await getDoc(ref);
+    if(snap.exists()){
+      const d=snap.data();
+      shopName.value=d.shopName||"";
+      shopCode.value=d.shopCode||"";
+    }
+  }catch(e){ console.error(e); }
+}
+load();
+
+document.getElementById("saveBtn").addEventListener("click",async()=>{
+  const name=shopName.value.trim();
+  const code=shopCode.value.trim().replace(/[^a-zA-Z0-9]/g,"").toUpperCase().slice(0,4);
+  if(!name){ alert("営業所・会場名を入力してください。"); return; }
+  if(!code){ alert("受付番号コードを入力してください。"); return; }
+
+  const btn=document.getElementById("saveBtn");
+  btn.disabled=true;
+  try{
+    await setDoc(ref,{
+      shopName:name,
+      shopCode:code,
+      calendarServiceEnabled:true,
+      updatedAt:serverTimestamp()
+    },{merge:true});
+    const saved=document.getElementById("saved");
+    saved.style.display="block";
+    saved.textContent=`保存しました。受付番号は ${code}001 から始まります。`;
+  }catch(e){
+    console.error(e);
+    alert("保存できませんでした。Firebaseの権限を確認してください。");
+  }finally{
+    btn.disabled=false;
+  }
+});
+</script>
+</body>
+</html>

@@ -24,7 +24,7 @@
 </style>
 </head>
 <body>
-<header><div class="bar"><div><h1>ハロウィンカレンダー 印刷受付</h1><div class="sub">A4縦・完成PNGをそのまま印刷</div></div><button class="refresh" id="refresh">更新</button></div></header>
+<header><div class="bar"><div><h1 id="adminTitle">ハロウィンカレンダー 印刷受付</h1><div class="sub"><span id="adminShopName">会場を読み込み中…</span> ／ <span id="adminShopId"></span></div></div><button class="refresh" id="refresh">更新</button></div></header>
 <main class="wrap">
   <div class="filter"><button class="active" data-filter="WAIT">未印刷</button><button data-filter="UPLOAD_ERROR">送信エラー</button><button data-filter="UPLOADING">送信中</button><button data-filter="READY">印刷済み</button><button data-filter="DONE">受渡済み</button><button data-filter="ALL">すべて</button></div>
   <div class="stats" id="stats">読み込み中…</div>
@@ -32,10 +32,28 @@
 </main>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-  import { getFirestore, collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  import { getFirestore, collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
   const firebaseConfig={apiKey:"AIzaSyBKSYZgaSVTu-HO_lS1Tp2eFjSjMuOONNI",authDomain:"my-uchiwa-queue.firebaseapp.com",projectId:"my-uchiwa-queue",storageBucket:"my-uchiwa-queue.firebasestorage.app",messagingSenderId:"245883628081",appId:"1:245883628081:web:ab7f00f01ba256ebca8310",measurementId:"G-W4S3EKL9TY"};
   const db=getFirestore(initializeApp(firebaseConfig));
   const SOURCE="halloween-photo-calendar-2026";
+  const params=new URLSearchParams(window.location.search);
+  const shopId=(params.get("shop")||"main").replace(/[^a-zA-Z0-9_-]/g,"")||"main";
+  const defaultSettings={shopName:"ハロウィンカレンダー会場",shopCode:"C"};
+  let shopSettings={...defaultSettings};
+
+  async function loadShopSettings(){
+    try{
+      const snap=await getDoc(doc(db,"settings",shopId));
+      shopSettings=snap.exists()?{...defaultSettings,...snap.data()}:{...defaultSettings};
+    }catch(e){
+      console.error(e);
+      shopSettings={...defaultSettings};
+    }
+    document.getElementById("adminShopName").textContent=shopSettings.shopName||defaultSettings.shopName;
+    document.getElementById("adminShopId").textContent=`shop=${shopId}`;
+    document.getElementById("adminTitle").textContent=`${shopSettings.shopName||defaultSettings.shopName}｜印刷受付`;
+    document.title=`${shopSettings.shopName||defaultSettings.shopName}｜カレンダー印刷受付`;
+  }
   let all=[];let filter="WAIT";
   const grid=document.getElementById("grid"),stats=document.getElementById("stats");
   function tsVal(v){try{return v?.toMillis?.()||0}catch{return 0}}
@@ -43,13 +61,14 @@
   async function load(){
     stats.textContent="読み込み中…";grid.innerHTML="";
     try{
-      const snap=await getDocs(query(collection(db,"orders"),where("source","==",SOURCE)));
-      all=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>tsVal(b.createdAt)-tsVal(a.createdAt));render();
+      await loadShopSettings();
+      const snap=await getDocs(query(collection(db,"orders"),where("shopId","==",shopId)));
+      all=snap.docs.map(d=>({id:d.id,...d.data()})).filter(o=>o.source===SOURCE).sort((a,b)=>tsVal(b.createdAt)-tsVal(a.createdAt));render();
     }catch(e){console.error(e);stats.textContent="読み込みに失敗しました。Firebaseの権限・通信を確認してください。";grid.innerHTML='<div class="empty">データを取得できませんでした。</div>';}
   }
   function render(){
     const list=filter==="ALL"?all:all.filter(x=>(x.status||"WAIT")===filter);
-    stats.textContent=`全 ${all.length}件 ／ 表示 ${list.length}件`;
+    stats.textContent=`${shopSettings.shopName||defaultSettings.shopName} ／ 全 ${all.length}件 ／ 表示 ${list.length}件`;
     if(!list.length){grid.innerHTML='<div class="empty">該当する受付はありません。</div>';return;}
     grid.innerHTML=list.map(o=>{
       const hasImage=!!o.imageUrl;
@@ -63,7 +82,7 @@
       return `<article class="card" data-id="${o.id}">
       <div class="thumb">${thumb}</div>
       <div class="body"><div class="top"><div class="num">${o.shortId||o.id}</div><span class="badge ${o.status||"WAIT"}">${o.status||"WAIT"}</span></div>
-      <div class="meta">${fmt(o.createdAt)}<br>印刷枚数：<b>${o.copies||1}枚</b> ／ A4縦 2480×3508px${err}</div>
+      <div class="meta">${fmt(o.createdAt)}<br>印刷枚数：<b>${o.copies||1}枚</b> ／ A4縦 2480×3508px<br>${o.shopName||shopSettings.shopName||""}${err}</div>
       <div class="actions">${imageActions}
       <button class="ready wide" data-status="READY" ${hasImage?"":"disabled"}>印刷済みにする</button><button class="done wide" data-status="DONE">受渡済みにする</button></div></div></article>`;
     }).join("");
