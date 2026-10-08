@@ -334,8 +334,9 @@
 
     <section class="card" id="photoCard">
       <div class="section-kicker">STEP 1 / えらぶ</div>
-      <h2>カレンダーの向きを決めて写真を選ぼう</h2>
-      
+      <h2>いちばん好きな写真を選ぼう</h2>
+      <p class="section-sub">「この顔がいい！」「こっちもかわいい！」。まずは家族のお気に入りを1枚。</p>
+
       <div class="layout-choice" role="group" aria-label="カレンダーの構図を選ぶ">
         <button class="layout-option active" id="layoutPortrait" type="button" data-layout="portrait" aria-pressed="true">
           <span class="layout-mini portrait" aria-hidden="true"></span>
@@ -353,13 +354,18 @@
 
       <label class="file-label" for="photoInput"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="4"/></svg>写真を撮る／スマホから選ぶ</label>
       <input id="photoInput" type="file" accept="image/*" />
-      </section>
+      <p class="hint">縦でも横でもOK。写真はカレンダー上半分に合うよう、自動でぴったり配置します。</p>
+    </section>
 
     <section class="card" id="editCard">
       <div class="section-kicker">STEP 2 / ととのえる</div>
-      <p class="hint">写真を指で動かせます。2本指で広げたり縮めたり、ひねって回転もできます。</p>
+      <h2>一緒に、いい感じにしよう</h2>
+      <p class="section-sub">写真を指で動かして、好きな大きさへ。「どっちがいい？」と相談しながら仕上げてみてください。</p>
       <div class="reselect-box">
-
+        <div class="reselect-copy">
+          <b>別の写真にしたくなったら</b>
+          <span>ここから何度でも選び直せます。</span>
+        </div>
         <label class="reselect-label" for="photoInput">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
           写真をえらび直す
@@ -368,6 +374,7 @@
       <div class="canvas-wrap">
         <canvas id="calendarCanvas" width="2480" height="3508" aria-label="A4カレンダープレビュー"></canvas>
       </div>
+      <div class="play-tip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12V7a2 2 0 0 1 4 0v4"/><path d="M12 10V6a2 2 0 0 1 4 0v6"/><path d="M16 10a2 2 0 0 1 4 0v5c0 4-2.7 7-7 7h-1c-3.2 0-5.2-1.5-6.7-4L3 14.5A2 2 0 0 1 6.3 12l1.7 2"/></svg><div><b>ここは親子で触ってみて。</b><br>「顔を大きくする？」「もう少し右？」と話しながら動かすと、仕上げる時間も思い出になります。</div></div>
       <div class="zoom-row">
         <span class="zoom-word">小さく</span><input id="zoom" type="range" min="50" max="300" value="100" /><span class="zoom-word">大きく</span>
       </div>
@@ -376,12 +383,9 @@
         <input id="rotation" type="range" min="-180" max="180" step="1" value="0" aria-label="写真の回転角度" />
         <span class="rotate-value" id="rotationValue">0°</span>
       </div>
-      <div class="photo-actions">
-        <button class="ghost wide" id="resetPhoto" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="8"/></svg>位置・大きさ・回転を戻す</button>
-      </div>
       <div class="correction-panel" aria-label="写真補正">
         <div class="correction-head">
-          <div><div class="correction-title">写真補正</div></div>
+          <div><div class="correction-title">写真をもっといい感じに</div><div class="correction-caption">迷ったら「おまかせ補正」だけでもOK</div></div>
         </div>
         <div class="correction-actions">
           <button class="secondary" id="autoEnhance" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>おまかせ補正</button>
@@ -407,10 +411,15 @@
         <div id="correctionNote" class="correction-note"></div>
       </div>
 
-
-
+      <div class="photo-actions">
+        <button class="ghost" id="zoomOut" type="button">− 小さく</button>
+        <button class="ghost" id="zoomIn" type="button">＋ 大きく</button>
+        <button class="ghost" id="rotateLeft" type="button">↶ 左へ90°</button>
+        <button class="ghost" id="rotateRight" type="button">↷ 右へ90°</button>
+        <button class="ghost wide" id="resetPhoto" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="8"/></svg>位置・大きさ・回転を戻す</button>
+      </div>
       <div id="quality" class="quality"></div>
-
+      <p class="hint">写真を指で動かせます。2本指で広げたり縮めたり、ひねって回転もできます。</p>
       <button class="primary" id="previewBtn" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>できあがりを見る</button>
     </section>
 
@@ -555,7 +564,119 @@
     let dragLast = null;
     let correction = { brightness:100, contrast:100, saturation:100 };
 
+    // スマホでも確実に補正が見えるよう、補正済み画像をキャッシュする
+    let correctedPreviewPhoto = null;
+    let correctedFullPhoto = null;
+    let correctionTimer = null;
+
+    // iPhone / Android のタッチ操作専用
+    let touchLastPoint = null;
+    let touchLastDistance = null;
+    let touchLastAngle = null;
+    let touchLastCenter = null;
+
     function clamp(value,min,max){ return Math.max(min,Math.min(max,value)); }
+
+    function correctionIsNeutral(){
+      return correction.brightness === 100 &&
+             correction.contrast === 100 &&
+             correction.saturation === 100;
+    }
+
+    function invalidateCorrectionCache(){
+      correctedFullPhoto = null;
+    }
+
+    function buildCorrectedPhoto(maxDimension=1200){
+      if(!photo || correctionIsNeutral()) return null;
+
+      const sw = photo.naturalWidth || photo.width;
+      const sh = photo.naturalHeight || photo.height;
+      const scale = Math.min(1, maxDimension / Math.max(sw,sh));
+      const w = Math.max(1, Math.round(sw * scale));
+      const h = Math.max(1, Math.round(sh * scale));
+
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const cctx = c.getContext("2d", {alpha:false, willReadFrequently:true});
+      cctx.drawImage(photo,0,0,w,h);
+
+      const image = cctx.getImageData(0,0,w,h);
+      const d = image.data;
+
+      // 100 = 元画像。スライダー値がそのまま強く効く。
+      const brightness = correction.brightness / 100;
+      const contrast = correction.contrast / 100;
+      const saturation = correction.saturation / 100;
+
+      for(let i=0;i<d.length;i+=4){
+        let r=d[i], g=d[i+1], b=d[i+2];
+
+        // 彩度
+        const gray = 0.2126*r + 0.7152*g + 0.0722*b;
+        r = gray + (r-gray) * saturation;
+        g = gray + (g-gray) * saturation;
+        b = gray + (b-gray) * saturation;
+
+        // コントラスト
+        r = (r-128) * contrast + 128;
+        g = (g-128) * contrast + 128;
+        b = (b-128) * contrast + 128;
+
+        // 明るさ
+        r *= brightness;
+        g *= brightness;
+        b *= brightness;
+
+        d[i]   = clamp(Math.round(r),0,255);
+        d[i+1] = clamp(Math.round(g),0,255);
+        d[i+2] = clamp(Math.round(b),0,255);
+      }
+
+      cctx.putImageData(image,0,0);
+      return c;
+    }
+
+    function refreshCorrectionPreview(){
+      if(!photo) return;
+      invalidateCorrectionCache();
+
+      if(correctionIsNeutral()){
+        correctedPreviewPhoto = null;
+        draw();
+        return;
+      }
+
+      // スマホ操作中は軽量版を使って、変化を即座に見せる
+      correctedPreviewPhoto = buildCorrectedPhoto(1100);
+      draw();
+    }
+
+    function scheduleCorrectionPreview(){
+      invalidateCorrectionCache();
+      if(correctionTimer) clearTimeout(correctionTimer);
+      correctionTimer = setTimeout(()=>{
+        correctionTimer = null;
+        refreshCorrectionPreview();
+      },35);
+    }
+
+    function ensureFullCorrection(){
+      if(!photo || correctionIsNeutral()){
+        correctedFullPhoto = null;
+        return;
+      }
+      if(!correctedFullPhoto){
+        // 印刷領域に十分な解像度を確保
+        correctedFullPhoto = buildCorrectedPhoto(2800);
+      }
+    }
+
+    function getRenderPhoto(){
+      if(correctionIsNeutral()) return photo;
+      return correctedFullPhoto || correctedPreviewPhoto || photo;
+    }
 
     function normalizeDegrees(deg){
       let d = Number(deg) || 0;
@@ -593,8 +714,11 @@
 
     function resetCorrection(silent=false){
       correction = { brightness:100, contrast:100, saturation:100 };
+      correctedPreviewPhoto = null;
+      correctedFullPhoto = null;
+      if(correctionTimer){ clearTimeout(correctionTimer); correctionTimer=null; }
       syncCorrectionUI();
-      setCorrectionNote(silent ? "" : "補正をもとに戻しました。ここからまた好きな感じに調整できます。");
+      setCorrectionNote(silent ? "" : "補正をもとに戻しました。");
       draw();
     }
 
@@ -620,14 +744,14 @@
       const chroma = chromaSum/count;
 
       let brightness = 100;
-      if(mean < 125) brightness = clamp(Math.round(100+(125-mean)*0.50),100,140);
-      else if(mean > 190) brightness = clamp(Math.round(100-(mean-190)*0.25),85,100);
+      if(mean < 135) brightness = clamp(Math.round(100+(135-mean)*0.65),100,150);
+      else if(mean > 185) brightness = clamp(Math.round(100-(mean-185)*0.35),80,100);
 
       let contrast = 100;
-      if(std < 55) contrast = clamp(Math.round(100+(55-std)*1.10),100,150);
-      else if(std > 82) contrast = clamp(Math.round(100-(std-82)*0.35),88,100);
+      if(std < 58) contrast = clamp(Math.round(100+(58-std)*1.35),100,165);
+      else if(std > 82) contrast = clamp(Math.round(100-(std-82)*0.45),82,100);
 
-      const saturation = chroma < 42 ? 140 : chroma < 70 ? 128 : 115;
+      const saturation = chroma < 42 ? 155 : chroma < 70 ? 138 : 122;
       return {brightness,contrast,saturation};
     }
 
@@ -663,16 +787,13 @@
         const s = baseScale * userScale;
         const dw = photo.naturalWidth * s;
         const dh = photo.naturalHeight * s;
-        const effectiveBrightness = clamp(100 + (correction.brightness - 100) * 1.25, 35, 190);
-        const effectiveContrast = clamp(100 + (correction.contrast - 100) * 1.35, 35, 220);
-        const effectiveSaturation = clamp(100 + (correction.saturation - 100) * 1.50, 0, 280);
-        ctx.filter = `brightness(${effectiveBrightness}%) contrast(${effectiveContrast}%) saturate(${effectiveSaturation}%)`;
+        const source = getRenderPhoto();
+
         ctx.save();
         ctx.translate(photoX, photoY);
         ctx.rotate(photoRotation);
-        ctx.drawImage(photo, -dw/2, -dh/2, dw, dh);
+        ctx.drawImage(source, -dw/2, -dh/2, dw, dh);
         ctx.restore();
-        ctx.filter = "none";
       } else {
         ctx.fillStyle="#3a2940";
         ctx.fillRect(r.x,r.y,r.w,r.h);
@@ -1086,6 +1207,8 @@
       const img=new Image();
       img.onload=()=>{
         photo=img;
+        correctedPreviewPhoto=null;
+        correctedFullPhoto=null;
         resetCorrection(true);
         fitPhoto();
         URL.revokeObjectURL(url);
@@ -1128,7 +1251,11 @@
         correction[key]=Number(range.value);
         valueEl.textContent=`${range.value}%`;
         setCorrectionNote("");
-        draw();
+        scheduleCorrectionPreview();
+      });
+
+      range.addEventListener("change",()=>{
+        refreshCorrectionPreview();
       });
     });
 
@@ -1142,8 +1269,8 @@
       if(!auto) return;
       correction = auto;
       syncCorrectionUI();
-      setCorrectionNote("おまかせ補正をかけました。気に入らなければ「補正をもとに戻す」で戻せます。");
-      draw();
+      setCorrectionNote("補正しました。");
+      refreshCorrectionPreview();
     });
 
     document.getElementById("resetCorrection").addEventListener("click",()=>resetCorrection(false));
@@ -1154,6 +1281,7 @@
     }
 
     canvas.addEventListener("pointerdown",e=>{
+      if(e.pointerType==="touch") return;
       if(!photo) return;
       canvas.setPointerCapture?.(e.pointerId);
       pointerMap.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -1170,6 +1298,7 @@
       e.preventDefault();
     });
     canvas.addEventListener("pointermove",e=>{
+      if(e.pointerType==="touch") return;
       if(!photo || !pointerMap.has(e.pointerId)) return;
       pointerMap.set(e.pointerId,{x:e.clientX,y:e.clientY});
       const pts=[...pointerMap.values()];
@@ -1204,6 +1333,7 @@
       e.preventDefault();
     });
     function endPointer(e){
+      if(e.pointerType==="touch") return;
       pointerMap.delete(e.pointerId);
       lastPinchDistance=null;
       lastPinchAngle=null;
@@ -1211,6 +1341,122 @@
     }
     canvas.addEventListener("pointerup",endPointer);
     canvas.addEventListener("pointercancel",endPointer);
+    function getTouchDistance(t1,t2){
+      return Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+    }
+
+    function getTouchAngle(t1,t2){
+      return Math.atan2(t2.clientY-t1.clientY,t2.clientX-t1.clientX);
+    }
+
+    function getTouchCenter(t1,t2){
+      return canvasCoords(
+        (t1.clientX+t2.clientX)/2,
+        (t1.clientY+t2.clientY)/2
+      );
+    }
+
+    canvas.addEventListener("touchstart",e=>{
+      if(!photo) return;
+
+      if(e.touches.length===1){
+        const t=e.touches[0];
+        touchLastPoint=canvasCoords(t.clientX,t.clientY);
+        touchLastDistance=null;
+        touchLastAngle=null;
+        touchLastCenter=null;
+      }else if(e.touches.length>=2){
+        const t1=e.touches[0], t2=e.touches[1];
+        touchLastDistance=getTouchDistance(t1,t2);
+        touchLastAngle=getTouchAngle(t1,t2);
+        touchLastCenter=getTouchCenter(t1,t2);
+        touchLastPoint=null;
+      }
+      e.preventDefault();
+    },{passive:false});
+
+    canvas.addEventListener("touchmove",e=>{
+      if(!photo) return;
+
+      if(e.touches.length===1){
+        const t=e.touches[0];
+        const p=canvasCoords(t.clientX,t.clientY);
+
+        if(touchLastPoint){
+          photoX += p.x-touchLastPoint.x;
+          photoY += p.y-touchLastPoint.y;
+        }
+
+        touchLastPoint=p;
+        draw();
+      }else if(e.touches.length>=2){
+        const t1=e.touches[0], t2=e.touches[1];
+        const distance=getTouchDistance(t1,t2);
+        const angle=getTouchAngle(t1,t2);
+        const center=getTouchCenter(t1,t2);
+
+        // ピンチ拡大・縮小
+        if(touchLastDistance && touchLastDistance>0){
+          const ratio=distance/touchLastDistance;
+          userScale=clamp(userScale*ratio,.5,3);
+          zoomRange.value=Math.round(userScale*100);
+        }
+
+        // 2本指のひねり回転
+        if(touchLastAngle!==null){
+          let delta=angle-touchLastAngle;
+          if(delta>Math.PI) delta-=Math.PI*2;
+          if(delta<-Math.PI) delta+=Math.PI*2;
+          photoRotation += delta;
+          syncRotationUI();
+        }
+
+        // 2本指の中心移動でも写真を移動
+        if(touchLastCenter){
+          photoX += center.x-touchLastCenter.x;
+          photoY += center.y-touchLastCenter.y;
+        }
+
+        touchLastDistance=distance;
+        touchLastAngle=angle;
+        touchLastCenter=center;
+
+        draw();
+        updateQuality();
+      }
+
+      e.preventDefault();
+    },{passive:false});
+
+    canvas.addEventListener("touchend",e=>{
+      if(e.touches.length===1){
+        const t=e.touches[0];
+        touchLastPoint=canvasCoords(t.clientX,t.clientY);
+        touchLastDistance=null;
+        touchLastAngle=null;
+        touchLastCenter=null;
+      }else if(e.touches.length>=2){
+        const t1=e.touches[0], t2=e.touches[1];
+        touchLastDistance=getTouchDistance(t1,t2);
+        touchLastAngle=getTouchAngle(t1,t2);
+        touchLastCenter=getTouchCenter(t1,t2);
+        touchLastPoint=null;
+      }else{
+        touchLastPoint=null;
+        touchLastDistance=null;
+        touchLastAngle=null;
+        touchLastCenter=null;
+      }
+      e.preventDefault();
+    },{passive:false});
+
+    canvas.addEventListener("touchcancel",()=>{
+      touchLastPoint=null;
+      touchLastDistance=null;
+      touchLastAngle=null;
+      touchLastCenter=null;
+    },{passive:false});
+
     canvas.addEventListener("wheel",e=>{
       if(!photo) return;
       userScale=Math.max(.5,Math.min(3,userScale*(e.deltaY<0?1.06:.94)));
@@ -1219,6 +1465,7 @@
 
     document.getElementById("previewBtn").addEventListener("click",()=>{
       if(!photo){alert("先にお気に入りの写真を選んでください。");document.getElementById("photoCard").scrollIntoView({behavior:"smooth"});return;}
+      ensureFullCorrection();
       draw();
       canvas.toBlob(blob=>{
         if(!blob){alert("できあがり画像を作れませんでした。もう一度お試しください。");return;}
@@ -1310,6 +1557,7 @@
       let orderRef=null;
 
       try{
+        ensureFullCorrection();
         draw();
 
         // 受付番号を発行
