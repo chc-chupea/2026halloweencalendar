@@ -574,6 +574,7 @@
     let touchLastDistance = null;
     let touchLastAngle = null;
     let touchLastCenter = null;
+    let touchGestureActive = false;
 
     function clamp(value,min,max){ return Math.max(min,Math.min(max,value)); }
 
@@ -676,6 +677,23 @@
     function getRenderPhoto(){
       if(correctionIsNeutral()) return photo;
       return correctedFullPhoto || correctedPreviewPhoto || photo;
+    }
+
+    function isInsidePhotoRect(point){
+      const r = getPhotoRect();
+      return point.x >= r.x && point.x <= r.x + r.w &&
+             point.y >= r.y && point.y <= r.y + r.h;
+    }
+
+    function eventInPhotoRect(clientX, clientY){
+      return isInsidePhotoRect(canvasCoords(clientX, clientY));
+    }
+
+    function touchesInPhotoRect(touches){
+      for(let i=0;i<touches.length;i++){
+        if(!eventInPhotoRect(touches[i].clientX, touches[i].clientY)) return false;
+      }
+      return true;
     }
 
     function normalizeDegrees(deg){
@@ -1283,6 +1301,7 @@
     canvas.addEventListener("pointerdown",e=>{
       if(e.pointerType==="touch") return;
       if(!photo) return;
+      if(!eventInPhotoRect(e.clientX, e.clientY)) return;
       canvas.setPointerCapture?.(e.pointerId);
       pointerMap.set(e.pointerId,{x:e.clientX,y:e.clientY});
       if(pointerMap.size===1){
@@ -1359,6 +1378,17 @@
     canvas.addEventListener("touchstart",e=>{
       if(!photo) return;
 
+      if(!touchesInPhotoRect(e.touches)){
+        touchGestureActive = false;
+        touchLastPoint = null;
+        touchLastDistance = null;
+        touchLastAngle = null;
+        touchLastCenter = null;
+        return;
+      }
+
+      touchGestureActive = true;
+
       if(e.touches.length===1){
         const t=e.touches[0];
         touchLastPoint=canvasCoords(t.clientX,t.clientY);
@@ -1377,6 +1407,12 @@
 
     canvas.addEventListener("touchmove",e=>{
       if(!photo) return;
+      if(!touchGestureActive) return;
+
+      if(!touchesInPhotoRect(e.touches)){
+        e.preventDefault();
+        return;
+      }
 
       if(e.touches.length===1){
         const t=e.touches[0];
@@ -1395,14 +1431,12 @@
         const angle=getTouchAngle(t1,t2);
         const center=getTouchCenter(t1,t2);
 
-        // ピンチ拡大・縮小
         if(touchLastDistance && touchLastDistance>0){
           const ratio=distance/touchLastDistance;
           userScale=clamp(userScale*ratio,.5,3);
           zoomRange.value=Math.round(userScale*100);
         }
 
-        // 2本指のひねり回転
         if(touchLastAngle!==null){
           let delta=angle-touchLastAngle;
           if(delta>Math.PI) delta-=Math.PI*2;
@@ -1411,7 +1445,6 @@
           syncRotationUI();
         }
 
-        // 2本指の中心移動でも写真を移動
         if(touchLastCenter){
           photoX += center.x-touchLastCenter.x;
           photoY += center.y-touchLastCenter.y;
@@ -1429,19 +1462,38 @@
     },{passive:false});
 
     canvas.addEventListener("touchend",e=>{
+      if(!touchGestureActive) return;
+
       if(e.touches.length===1){
+        if(!touchesInPhotoRect(e.touches)){
+          touchGestureActive = false;
+          touchLastPoint=null;
+          touchLastDistance=null;
+          touchLastAngle=null;
+          touchLastCenter=null;
+          return;
+        }
         const t=e.touches[0];
         touchLastPoint=canvasCoords(t.clientX,t.clientY);
         touchLastDistance=null;
         touchLastAngle=null;
         touchLastCenter=null;
       }else if(e.touches.length>=2){
+        if(!touchesInPhotoRect(e.touches)){
+          touchGestureActive = false;
+          touchLastPoint=null;
+          touchLastDistance=null;
+          touchLastAngle=null;
+          touchLastCenter=null;
+          return;
+        }
         const t1=e.touches[0], t2=e.touches[1];
         touchLastDistance=getTouchDistance(t1,t2);
         touchLastAngle=getTouchAngle(t1,t2);
         touchLastCenter=getTouchCenter(t1,t2);
         touchLastPoint=null;
       }else{
+        touchGestureActive = false;
         touchLastPoint=null;
         touchLastDistance=null;
         touchLastAngle=null;
@@ -1451,6 +1503,7 @@
     },{passive:false});
 
     canvas.addEventListener("touchcancel",()=>{
+      touchGestureActive = false;
       touchLastPoint=null;
       touchLastDistance=null;
       touchLastAngle=null;
@@ -1459,6 +1512,7 @@
 
     canvas.addEventListener("wheel",e=>{
       if(!photo) return;
+      if(!eventInPhotoRect(e.clientX, e.clientY)) return;
       userScale=Math.max(.5,Math.min(3,userScale*(e.deltaY<0?1.06:.94)));
       zoomRange.value=Math.round(userScale*100);draw();updateQuality();e.preventDefault();
     },{passive:false});
