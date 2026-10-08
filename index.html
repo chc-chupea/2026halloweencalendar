@@ -319,6 +319,17 @@
       .layout-option{min-height:82px}
     }
 
+  
+    /* 下部の重複操作を整理：リセットだけ表示 */
+    .photo-actions{
+      display:block !important;
+      margin-top:10px;
+    }
+    .photo-actions .wide{
+      width:100%;
+      grid-column:auto !important;
+    }
+
   </style>
 </head>
 <body>
@@ -379,6 +390,9 @@
         <input id="rotation" type="range" min="-180" max="180" step="1" value="0" aria-label="写真の回転角度" />
         <span class="rotate-value" id="rotationValue">0°</span>
       </div>
+      <div class="photo-actions">
+        <button class="ghost wide" id="resetPhoto" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="8"/></svg>位置・大きさ・回転を戻す</button>
+      </div>
       <div class="correction-panel" aria-label="写真補正">
         <div class="correction-head">
           <div><div class="correction-title">写真補正</div></div>
@@ -407,15 +421,7 @@
         <div id="correctionNote" class="correction-note"></div>
       </div>
 
-      <div class="photo-actions">
-        <button class="ghost" id="zoomOut" type="button">− 小さく</button>
-        <button class="ghost" id="zoomIn" type="button">＋ 大きく</button>
-        <button class="ghost" id="rotateLeft" type="button">↶ 左へ90°</button>
-        <button class="ghost" id="rotateRight" type="button">↷ 右へ90°</button>
-        <button class="ghost wide" id="resetPhoto" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="8"/></svg>位置・大きさ・回転を戻す</button>
-      </div>
       <div id="quality" class="quality"></div>
-      <p class="hint">写真を指で動かせます。2本指で広げたり縮めたり、ひねって回転もできます。</p>
       <button class="primary" id="previewBtn" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>できあがりを見る</button>
     </section>
 
@@ -1280,25 +1286,13 @@
       userScale = Number(zoomRange.value)/100;
       draw();updateQuality();
     });
-    document.getElementById("zoomIn").addEventListener("click",()=>{
-      userScale=Math.min(3,userScale*1.1);zoomRange.value=Math.round(userScale*100);draw();updateQuality();
-    });
-    document.getElementById("zoomOut").addEventListener("click",()=>{
-      userScale=Math.max(.5,userScale/1.1);zoomRange.value=Math.round(userScale*100);draw();updateQuality();
-    });
     document.getElementById("resetPhoto").addEventListener("click",fitPhoto);
 
     rotationRange.addEventListener("input",()=>{
       setPhotoRotationDegrees(Number(rotationRange.value));
     });
 
-    document.getElementById("rotateLeft").addEventListener("click",()=>{
-      setPhotoRotationDegrees(photoRotation * 180 / Math.PI - 90);
-    });
 
-    document.getElementById("rotateRight").addEventListener("click",()=>{
-      setPhotoRotationDegrees(photoRotation * 180 / Math.PI + 90);
-    });
 
     [
       [brightnessRange,"brightness",brightnessValue],
