@@ -336,27 +336,27 @@
       <div class="section-kicker">STEP 1 / えらぶ</div>
       <h2>カレンダーの向きを決めて写真を選ぼう</h2>
       <div class="layout-choice" role="group" aria-label="カレンダーの構図を選ぶ">
-        <button class="layout-option active" id="layoutPortrait" type="button" data-layout="portrait" aria-pressed="true">
-          <span class="layout-mini portrait" aria-hidden="true"></span>
-          <span class="layout-title">縦構図</span>
-          <span class="layout-desc">A4縦。上に写真、下に11月・12月を横並び。</span>
-        </button>
-        <button class="layout-option" id="layoutLandscape" type="button" data-layout="landscape" aria-pressed="false">
+        <button class="layout-option active" id="layoutLandscape" type="button" data-layout="landscape" aria-pressed="true">
           <span class="layout-mini landscape" aria-hidden="true"></span>
           <span class="layout-title">横構図</span>
-          <span class="layout-desc">A4横。左に縦写真、右に11月・12月を縦並び。</span>
-          <span class="recommend">全身の仮装写真におすすめ</span>
+          <span class="layout-desc">A4横。左に縦写真、右に11月・12月。</span>
+          <span class="recommend">おすすめ</span>
+        </button>
+        <button class="layout-option" id="layoutPortrait" type="button" data-layout="portrait" aria-pressed="false">
+          <span class="layout-mini portrait" aria-hidden="true"></span>
+          <span class="layout-title">縦構図</span>
+          <span class="layout-desc">A4縦。上に写真、下に11月・12月。</span>
         </button>
       </div>
-      <div class="layout-hint" id="layoutHint">縦構図を選択中。写真は上半分に大きく入ります。</div>
+      <div class="layout-hint" id="layoutHint">横構図を選択中。スマホの縦写真が入りやすい構図です。</div>
 
       <label class="file-label" for="photoInput"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="4"/></svg>写真を撮る／スマホから選ぶ</label>
       <input id="photoInput" type="file" accept="image/*" />
-    </section>
+         </section>
 
     <section class="card" id="editCard">
       <div class="section-kicker">STEP 2 / ととのえる</div>
-       <p class="section-sub">写真を指で動かせます。2本指で広げたり縮めたり、ひねって回転もできます。</p>
+      <p class="section-sub">写真を指で動かせます。2本指で広げたり縮めたり、ひねって回転もできます。</p>
       <div class="reselect-box">
         <div class="reselect-copy">
           <b>別の写真にしたくなったら</b>
@@ -370,7 +370,7 @@
       <div class="canvas-wrap">
         <canvas id="calendarCanvas" width="2480" height="3508" aria-label="A4カレンダープレビュー"></canvas>
       </div>
-      
+
       <div class="zoom-row">
         <span class="zoom-word">小さく</span><input id="zoom" type="range" min="50" max="300" value="100" /><span class="zoom-word">大きく</span>
       </div>
@@ -415,18 +415,19 @@
         <button class="ghost wide" id="resetPhoto" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="8"/></svg>位置・大きさ・回転を戻す</button>
       </div>
       <div id="quality" class="quality"></div>
-      
+      <p class="hint">写真を指で動かせます。2本指で広げたり縮めたり、ひねって回転もできます。</p>
       <button class="primary" id="previewBtn" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>できあがりを見る</button>
     </section>
 
     <section class="card preview-box" id="previewCard">
       <div class="section-kicker">STEP 3 / かくにん</div>
-      <h2>できあがり、どうかな？</h2>
+      <h2>できあがり どうかな？</h2>
       <img id="previewImage" alt="完成カレンダー" />
-      <div class="notice">「もうちょっと大きくしたい」など気になるところがあれば、上に戻って何度でも調整できます。</div>      <div class="reselect-box" style="margin-top:12px">
+      <div class="notice">「もうちょっと大きくしたい」など気になるところがあれば、上に戻って何度でも調整できます。</div>
+        <div class="reselect-box" style="margin-top:12px">
         <div class="reselect-copy">
           <b>写真を変えたい？</b>
-          <span>別の写真で、編集し直せます。</span>
+          <span>別の写真を選ぶと、すぐ編集し直せます。</span>
         </div>
         <label class="reselect-label" for="photoInput">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
@@ -474,17 +475,46 @@
     const storage = getStorage(app);
 
     const YEAR = 2026;
-    let orientation = "portrait";
-    let W = 2480;
-    let H = 3508;
-    let PHOTO_H = Math.floor(H / 2); // 旧描画関数との互換用
+    let orientation = "landscape";
+    let W = 3508;
+    let H = 2480;
+    let PHOTO_H = H; // 旧描画関数との互換用
     const SOURCE = "halloween-photo-calendar-2026";
+    const PRINT_MARGIN_MM = 4;
 
     function getPhotoRect(){
       if(orientation === "landscape"){
         return { x:0, y:0, w:Math.floor(W * 0.42), h:H };
       }
       return { x:0, y:0, w:W, h:Math.floor(H / 2) };
+    }
+
+    function getPrintMarginPx(){
+      const pageMm = orientation === "landscape"
+        ? { w:297, h:210 }
+        : { w:210, h:297 };
+
+      return {
+        x: W * PRINT_MARGIN_MM / pageMm.w,
+        y: H * PRINT_MARGIN_MM / pageMm.h
+      };
+    }
+
+    function createPrintCanvas(){
+      const printCanvas=document.createElement("canvas");
+      printCanvas.width=W;
+      printCanvas.height=H;
+
+      const pctx=printCanvas.getContext("2d",{alpha:false});
+      pctx.fillStyle="#fff";
+      pctx.fillRect(0,0,W,H);
+
+      const margin=getPrintMarginPx();
+      const innerW=W-margin.x*2;
+      const innerH=H-margin.y*2;
+
+      pctx.drawImage(canvas, margin.x, margin.y, innerW, innerH);
+      return printCanvas;
     }
 
     function getLayoutLabel(){
@@ -1537,7 +1567,9 @@
       if(!photo){alert("先にお気に入りの写真を選んでください。");document.getElementById("photoCard").scrollIntoView({behavior:"smooth"});return;}
       ensureFullCorrection();
       draw();
-      canvas.toBlob(blob=>{
+
+      const printCanvas=createPrintCanvas();
+      printCanvas.toBlob(blob=>{
         if(!blob){alert("できあがり画像を作れませんでした。もう一度お試しください。");return;}
         if(previewUrl) URL.revokeObjectURL(previewUrl);
         previewUrl=URL.createObjectURL(blob);
@@ -1586,7 +1618,8 @@
 
     function canvasToPngBlob(){
       return new Promise((resolve,reject)=>{
-        canvas.toBlob(blob=>{
+        const printCanvas=createPrintCanvas();
+        printCanvas.toBlob(blob=>{
           if(blob) resolve(blob);
           else reject(new Error("canvas-toBlob-failed"));
         },"image/png");
@@ -1659,6 +1692,7 @@
           imageUrl:"",
           storagePath,
           width:W,height:H,
+          printMarginMm:PRINT_MARGIN_MM,
           status:"UPLOADING",
           createdAt:serverTimestamp(),
           updatedAt:serverTimestamp(),
@@ -1704,7 +1738,7 @@
 
     syncCorrectionUI();
     syncRotationUI();
-    setOrientation("portrait");
+    setOrientation("landscape");
   </script>
 </body>
 </html>
