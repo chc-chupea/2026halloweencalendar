@@ -1582,7 +1582,7 @@
       await shopSettingsReady;
 
       const dayKey=getTodayKey();
-      const counterKey=`${shopId}_${dayKey}_calendar`;
+      const counterKey = `${shopId}_calendar`;
       const counterRef=doc(db,"counters",counterKey);
 
       const num=await runTransaction(db,async tx=>{
