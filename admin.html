@@ -20,7 +20,14 @@
   .body{padding:13px}.top{display:flex;justify-content:space-between;gap:8px;align-items:center}.num{font-size:24px;font-weight:900}.badge{font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px}
   .WAIT{background:var(--wait);color:#814900}.UPLOADING{background:#eef3ff;color:#3558a8}.UPLOAD_ERROR{background:#fff0ef;color:#a02a20}.READY{background:var(--ready);color:#246341}.DONE{background:var(--done);color:#666}
   .meta{font-size:12px;line-height:1.55;color:var(--muted);margin:8px 0}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.actions .wide{grid-column:1/-1}
-  .print{background:#23192b;color:#fff}.png{background:#f3edf5;color:#44304d}.ready{background:#e7f5ed;color:#23623f}.done{background:#ededf0;color:#555}.empty{padding:40px;text-align:center;color:#7b7080;background:#fff;border-radius:16px}
+  .print{background:#23192b;color:#fff}.png{background:#f3edf5;color:#44304d}
+  .state-toggles{display:grid;grid-template-columns:1fr 1fr;gap:7px;grid-column:1/-1}
+  .state-toggle{min-height:46px;border:1px solid var(--line);background:#fff;color:#65566b}
+  .state-toggle.off{background:#fff7ef;color:#8a4c17;border-color:#f0d8c0}
+  .state-toggle.on.printed{background:#e7f5ed;color:#23623f;border-color:#c8e7d5}
+  .state-toggle.on.delivered{background:#eceaf1;color:#4f4654;border-color:#d9d4de}
+  .state-toggle:disabled{opacity:.38;cursor:not-allowed}
+  .empty{padding:40px;text-align:center;color:#7b7080;background:#fff;border-radius:16px}
 </style>
 </head>
 <body>
@@ -83,12 +90,23 @@
       const orientationLabel=isLandscape?"A4横":"A4縦";
       const dims=`${o.width|| (isLandscape?3508:2480)}×${o.height|| (isLandscape?2480:3508)}px`;
       const thumbAspect=isLandscape?"297/210":"210/297";
+      const status=o.status||"WAIT";
+      const isPrinted=status==="READY" || status==="DONE";
+      const isDelivered=status==="DONE";
+      const printLabel=isPrinted?"印刷済":"印刷未";
+      const deliveryLabel=isDelivered?"受渡済":"受渡未";
+      const deliveryDisabled=!isPrinted && !isDelivered;
+
       return `<article class="card" data-id="${o.id}">
       <div class="thumb" style="aspect-ratio:${thumbAspect}">${thumb}</div>
-      <div class="body"><div class="top"><div class="num">${o.shortId||o.id}</div><span class="badge ${o.status||"WAIT"}">${o.status||"WAIT"}</span></div>
+      <div class="body"><div class="top"><div class="num">${o.shortId||o.id}</div><span class="badge ${status}">${status}</span></div>
       <div class="meta">${fmt(o.createdAt)}<br>印刷枚数：<b>${o.copies||1}枚</b> ／ ${orientationLabel} ${dims}<br>${o.shopName||shopSettings.shopName||""}${err}</div>
       <div class="actions">${imageActions}
-      <button class="ready wide" data-status="READY" ${hasImage?"":"disabled"}>印刷済みにする</button><button class="done wide" data-status="DONE">受渡済みにする</button></div></div></article>`;
+        <div class="state-toggles">
+          <button class="state-toggle ${isPrinted?"on printed":"off"}" data-action="toggle-print" ${hasImage?"":"disabled"}>${printLabel}</button>
+          <button class="state-toggle ${isDelivered?"on delivered":"off"}" data-action="toggle-delivery" ${deliveryDisabled?"disabled":""}>${deliveryLabel}</button>
+        </div>
+      </div></div></article>`;
     }).join("");
   }
   function printImage(url,orientation="portrait"){
@@ -100,10 +118,52 @@
     w.document.write(`<!doctype html><html><head><title>A4印刷</title><style>@page{size:${pageSize};margin:0}html,body{margin:0;width:${pageW};height:${pageH}}img{width:${pageW};height:${pageH};object-fit:fill;display:block}</style></head><body><img src="${url}" onload="setTimeout(()=>window.print(),250)"></body></html>`);w.document.close();
   }
   grid.addEventListener("click",async e=>{
-    const p=e.target.closest("[data-print]");if(p){printImage(p.dataset.print,p.dataset.orientation||"portrait");return;}
-    const s=e.target.closest("[data-status]");if(!s)return;
-    const card=e.target.closest(".card");const id=card?.dataset.id;if(!id)return;
-    s.disabled=true;try{await updateDoc(doc(db,"orders",id),{status:s.dataset.status,updatedAt:serverTimestamp()});const o=all.find(x=>x.id===id);if(o)o.status=s.dataset.status;render();}catch(err){console.error(err);alert("更新できませんでした。");s.disabled=false;}
+    const p=e.target.closest("[data-print]");
+    if(p){
+      printImage(p.dataset.print,p.dataset.orientation||"portrait");
+      return;
+    }
+
+    const actionBtn=e.target.closest("[data-action]");
+    if(!actionBtn) return;
+
+    const card=e.target.closest(".card");
+    const id=card?.dataset.id;
+    if(!id) return;
+
+    const o=all.find(x=>x.id===id);
+    if(!o) return;
+
+    const current=o.status||"WAIT";
+    let nextStatus=current;
+
+    if(actionBtn.dataset.action==="toggle-print"){
+      // 印刷済 → 印刷未 に戻す場合、受渡済も同時に未へ戻る
+      nextStatus=(current==="READY" || current==="DONE") ? "WAIT" : "READY";
+    }else if(actionBtn.dataset.action==="toggle-delivery"){
+      // 受渡済 → 受渡未 は、印刷済の状態に戻す
+      if(current==="DONE"){
+        nextStatus="READY";
+      }else if(current==="READY"){
+        nextStatus="DONE";
+      }else{
+        return;
+      }
+    }
+
+    actionBtn.disabled=true;
+    try{
+      await updateDoc(doc(db,"orders",id),{
+        status:nextStatus,
+        updatedAt:serverTimestamp()
+      });
+      o.status=nextStatus;
+      render();
+    }catch(err){
+      console.error(err);
+      alert("更新できませんでした。");
+      actionBtn.disabled=false;
+    }
   });
   document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-filter]").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.filter;render();}));
   document.getElementById("refresh").addEventListener("click",load);
