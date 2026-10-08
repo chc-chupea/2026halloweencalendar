@@ -575,6 +575,7 @@
     let touchLastAngle = null;
     let touchLastCenter = null;
     let touchGestureActive = false;
+    let gestureFrame = null;
 
     function clamp(value,min,max){ return Math.max(min,Math.min(max,value)); }
 
@@ -694,6 +695,21 @@
         if(!eventInPhotoRect(touches[i].clientX, touches[i].clientY)) return false;
       }
       return true;
+    }
+
+    function anyTouchInPhotoRect(touches){
+      for(let i=0;i<touches.length;i++){
+        if(eventInPhotoRect(touches[i].clientX, touches[i].clientY)) return true;
+      }
+      return false;
+    }
+
+    function scheduleGestureDraw(){
+      if(gestureFrame) return;
+      gestureFrame = requestAnimationFrame(()=>{
+        gestureFrame = null;
+        draw();
+      });
     }
 
     function normalizeDegrees(deg){
@@ -1378,16 +1394,12 @@
     canvas.addEventListener("touchstart",e=>{
       if(!photo) return;
 
-      if(!touchesInPhotoRect(e.touches)){
-        touchGestureActive = false;
-        touchLastPoint = null;
-        touchLastDistance = null;
-        touchLastAngle = null;
-        touchLastCenter = null;
-        return;
+      // 操作開始時だけ写真エリアを判定。
+      // いったん写真から始めた操作は、指がカレンダー側へはみ出しても継続する。
+      if(!touchGestureActive){
+        if(!anyTouchInPhotoRect(e.touches)) return;
+        touchGestureActive = true;
       }
-
-      touchGestureActive = true;
 
       if(e.touches.length===1){
         const t=e.touches[0];
@@ -1402,17 +1414,12 @@
         touchLastCenter=getTouchCenter(t1,t2);
         touchLastPoint=null;
       }
+
       e.preventDefault();
     },{passive:false});
 
     canvas.addEventListener("touchmove",e=>{
-      if(!photo) return;
-      if(!touchGestureActive) return;
-
-      if(!touchesInPhotoRect(e.touches)){
-        e.preventDefault();
-        return;
-      }
+      if(!photo || !touchGestureActive) return;
 
       if(e.touches.length===1){
         const t=e.touches[0];
@@ -1424,38 +1431,56 @@
         }
 
         touchLastPoint=p;
-        draw();
+        scheduleGestureDraw();
       }else if(e.touches.length>=2){
         const t1=e.touches[0], t2=e.touches[1];
         const distance=getTouchDistance(t1,t2);
         const angle=getTouchAngle(t1,t2);
         const center=getTouchCenter(t1,t2);
 
+        // まず2本指の中心移動についてくる
+        if(touchLastCenter){
+          photoX += center.x-touchLastCenter.x;
+          photoY += center.y-touchLastCenter.y;
+        }
+
+        // ピンチした中心を軸に拡大・縮小
         if(touchLastDistance && touchLastDistance>0){
-          const ratio=distance/touchLastDistance;
-          userScale=clamp(userScale*ratio,.5,3);
+          const ratio = distance / touchLastDistance;
+          const oldScale = userScale;
+          const nextScale = clamp(oldScale * ratio,.5,3);
+          const appliedRatio = nextScale / oldScale;
+
+          photoX = center.x + (photoX-center.x) * appliedRatio;
+          photoY = center.y + (photoY-center.y) * appliedRatio;
+
+          userScale = nextScale;
           zoomRange.value=Math.round(userScale*100);
         }
 
+        // 2本指の中心を軸に回転
         if(touchLastAngle!==null){
           let delta=angle-touchLastAngle;
           if(delta>Math.PI) delta-=Math.PI*2;
           if(delta<-Math.PI) delta+=Math.PI*2;
+
+          const vx = photoX-center.x;
+          const vy = photoY-center.y;
+          const cos = Math.cos(delta);
+          const sin = Math.sin(delta);
+
+          photoX = center.x + vx*cos - vy*sin;
+          photoY = center.y + vx*sin + vy*cos;
+
           photoRotation += delta;
           syncRotationUI();
-        }
-
-        if(touchLastCenter){
-          photoX += center.x-touchLastCenter.x;
-          photoY += center.y-touchLastCenter.y;
         }
 
         touchLastDistance=distance;
         touchLastAngle=angle;
         touchLastCenter=center;
 
-        draw();
-        updateQuality();
+        scheduleGestureDraw();
       }
 
       e.preventDefault();
@@ -1465,49 +1490,46 @@
       if(!touchGestureActive) return;
 
       if(e.touches.length===1){
-        if(!touchesInPhotoRect(e.touches)){
-          touchGestureActive = false;
-          touchLastPoint=null;
-          touchLastDistance=null;
-          touchLastAngle=null;
-          touchLastCenter=null;
-          return;
-        }
         const t=e.touches[0];
         touchLastPoint=canvasCoords(t.clientX,t.clientY);
         touchLastDistance=null;
         touchLastAngle=null;
         touchLastCenter=null;
       }else if(e.touches.length>=2){
-        if(!touchesInPhotoRect(e.touches)){
-          touchGestureActive = false;
-          touchLastPoint=null;
-          touchLastDistance=null;
-          touchLastAngle=null;
-          touchLastCenter=null;
-          return;
-        }
         const t1=e.touches[0], t2=e.touches[1];
         touchLastDistance=getTouchDistance(t1,t2);
         touchLastAngle=getTouchAngle(t1,t2);
         touchLastCenter=getTouchCenter(t1,t2);
         touchLastPoint=null;
       }else{
-        touchGestureActive = false;
+        touchGestureActive=false;
         touchLastPoint=null;
         touchLastDistance=null;
         touchLastAngle=null;
         touchLastCenter=null;
+        if(gestureFrame){
+          cancelAnimationFrame(gestureFrame);
+          gestureFrame=null;
+        }
+        draw();
+        updateQuality();
       }
+
       e.preventDefault();
     },{passive:false});
 
     canvas.addEventListener("touchcancel",()=>{
-      touchGestureActive = false;
+      touchGestureActive=false;
       touchLastPoint=null;
       touchLastDistance=null;
       touchLastAngle=null;
       touchLastCenter=null;
+      if(gestureFrame){
+        cancelAnimationFrame(gestureFrame);
+        gestureFrame=null;
+      }
+      draw();
+      updateQuality();
     },{passive:false});
 
     canvas.addEventListener("wheel",e=>{
