@@ -25,18 +25,17 @@ code{background:#f1ebf3;padding:2px 5px;border-radius:5px}
 <div class="wrap">
   <div class="card">
     <h1>営業所・会場設定</h1>
-    <div class="sub">営業所名と受付番号コードを保存すると、この営業所専用のお客様URLとadmin URLを自動で発行します。<br>同じFirebaseを使いながら、注文と通し番号は営業所ごとに分かれます。</div>
+    <div class="sub">URLの <code>?shop=...</code> ごとに、店名と受付番号の頭文字を設定します。<br>同じFirebaseを使いながら、注文と通し番号は営業所ごとに分かれます。</div>
+
+    <label>現在の shop ID</label>
+    <div class="url" id="shopIdView"></div>
 
     <label for="shopName">営業所・会場名</label>
-    <input id="shopName" placeholder="例：中国新聞廿日市東営業所">
+    <input id="shopName" placeholder="例：長束営業所">
 
     <label for="shopCode">受付番号コード（1〜4文字）</label>
-    <input id="shopCode" maxlength="4" placeholder="例：HE">
-    <div class="note">例：コード HE の会場では <b>HE001 → HE002 → HE003</b> と発行します。</div>
-
-    <label for="shopIdInput">URL用 営業所ID</label>
-    <input id="shopIdInput" placeholder="例：he">
-    <div class="note">受付番号コードを入力すると自動で入ります。通常はそのままでOKです。</div>
+    <input id="shopCode" maxlength="4" placeholder="例：N">
+    <div class="note">例：コード N の会場では <b>N001 → N002 → N003</b> と発行します。別会場は別カウンタです。</div>
 
     <button id="saveBtn">この会場設定を保存</button>
     <div class="ok" id="saved">保存しました。</div>
@@ -46,12 +45,10 @@ code{background:#f1ebf3;padding:2px 5px;border-radius:5px}
     <b>お客様用URL</b>
     <div class="url" id="customerUrl"></div>
     <a class="btn" id="customerLink" target="_blank">お客様画面を開く</a>
-    <button type="button" id="copyCustomer" style="background:#fff;color:#33243b;border:1px solid #d9cfdb">お客様URLをコピー</button>
 
     <b style="display:block;margin-top:18px">店舗用 admin URL</b>
     <div class="url" id="adminUrl"></div>
     <a class="btn" id="adminLink" target="_blank">この営業所の受付画面を開く</a>
-    <button type="button" id="copyAdmin" style="background:#fff;color:#33243b;border:1px solid #d9cfdb">admin URLをコピー</button>
   </div>
 </div>
 
@@ -70,74 +67,31 @@ const firebaseConfig={
 };
 const db=getFirestore(initializeApp(firebaseConfig));
 const params=new URLSearchParams(location.search);
-let currentShopId=(params.get("shop")||"").replace(/[^a-zA-Z0-9_-]/g,"").toLowerCase();
+const shopId=(params.get("shop")||"main").replace(/[^a-zA-Z0-9_-]/g,"")||"main";
+const ref=doc(db,"settings",shopId);
 
 const shopName=document.getElementById("shopName");
 const shopCode=document.getElementById("shopCode");
-const shopIdInput=document.getElementById("shopIdInput");
+document.getElementById("shopIdView").textContent=shopId;
 
-function normalizeShopId(value){
-  return String(value||"")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g,"")
-    .slice(0,32);
-}
-
-function updateLinks(shopId){
+function updateLinks(){
   const base=location.href.split("?")[0].replace(/settings\.html$/,"");
-  const id=normalizeShopId(shopId);
-  if(!id){
-    document.getElementById("customerUrl").textContent="保存後に表示されます";
-    document.getElementById("adminUrl").textContent="保存後に表示されます";
-    document.getElementById("customerLink").removeAttribute("href");
-    document.getElementById("adminLink").removeAttribute("href");
-    return;
-  }
-
-  const customer=`${base}index.html?shop=${encodeURIComponent(id)}`;
-  const admin=`${base}admin.html?shop=${encodeURIComponent(id)}`;
+  const customer=`${base}index.html?shop=${encodeURIComponent(shopId)}`;
+  const admin=`${base}admin.html?shop=${encodeURIComponent(shopId)}`;
   document.getElementById("customerUrl").textContent=customer;
   document.getElementById("adminUrl").textContent=admin;
   document.getElementById("customerLink").href=customer;
   document.getElementById("adminLink").href=admin;
 }
-
-shopCode.addEventListener("input",()=>{
-  const code=shopCode.value.trim().replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,4);
-  if(!shopIdInput.dataset.edited){
-    shopIdInput.value=code;
-    updateLinks(code);
-  }
-});
-
-shopIdInput.addEventListener("input",()=>{
-  shopIdInput.dataset.edited="1";
-  shopIdInput.value=normalizeShopId(shopIdInput.value);
-  updateLinks(shopIdInput.value);
-});
+updateLinks();
 
 async function load(){
-  // 旧URLの shop=ID / shop=main はテンプレート扱いにして、
-  // 実際の営業所IDとしては使わない
-  if(currentShopId==="id" || currentShopId==="main"){
-    currentShopId="";
-  }
-
-  if(!currentShopId){
-    updateLinks("");
-    return;
-  }
-
   try{
-    const snap=await getDoc(doc(db,"settings",currentShopId));
+    const snap=await getDoc(ref);
     if(snap.exists()){
       const d=snap.data();
       shopName.value=d.shopName||"";
       shopCode.value=d.shopCode||"";
-      shopIdInput.value=currentShopId;
-      shopIdInput.dataset.edited="1";
-      updateLinks(currentShopId);
     }
   }catch(e){ console.error(e); }
 }
@@ -146,50 +100,21 @@ load();
 document.getElementById("saveBtn").addEventListener("click",async()=>{
   const name=shopName.value.trim();
   const code=shopCode.value.trim().replace(/[^a-zA-Z0-9]/g,"").toUpperCase().slice(0,4);
-
-  let shopId=normalizeShopId(shopIdInput.value);
-  if(!shopId){
-    shopId=normalizeShopId(code);
-    shopIdInput.value=shopId;
-  }
-
   if(!name){ alert("営業所・会場名を入力してください。"); return; }
   if(!code){ alert("受付番号コードを入力してください。"); return; }
-  if(!shopId){ alert("URL用 営業所IDを入力してください。"); return; }
 
   const btn=document.getElementById("saveBtn");
   btn.disabled=true;
-
   try{
-    const ref=doc(db,"settings",shopId);
     await setDoc(ref,{
-      shopId,
       shopName:name,
       shopCode:code,
       calendarServiceEnabled:true,
       updatedAt:serverTimestamp()
     },{merge:true});
-
-    currentShopId=shopId;
-
-    // 保存後に settings 自身のURLも確定した営業所IDへ切り替える
-    const newSettingsUrl=`${location.pathname}?shop=${encodeURIComponent(shopId)}`;
-    history.replaceState(null,"",newSettingsUrl);
-
-    updateLinks(shopId);
-
     const saved=document.getElementById("saved");
     saved.style.display="block";
-    saved.innerHTML=
-      `保存しました。<br>` +
-      `<b>${name}</b> の受付番号は <b>${code}001</b> から始まります。<br>` +
-      `下に、この営業所専用URLを表示しました。`;
-
-    // URL欄が見える位置まで移動
-    document.getElementById("customerUrl").scrollIntoView({
-      behavior:"smooth",
-      block:"center"
-    });
+    saved.textContent=`保存しました。受付番号は ${code}001 から始まります。`;
   }catch(e){
     console.error(e);
     alert("保存できませんでした。Firebaseの権限を確認してください。");
@@ -197,21 +122,6 @@ document.getElementById("saveBtn").addEventListener("click",async()=>{
     btn.disabled=false;
   }
 });
-
-document.getElementById("copyCustomer").addEventListener("click",async()=>{
-  const value=document.getElementById("customerUrl").textContent;
-  if(!value || value==="保存後に表示されます") return;
-  await navigator.clipboard.writeText(value);
-  alert("お客様URLをコピーしました。");
-});
-
-document.getElementById("copyAdmin").addEventListener("click",async()=>{
-  const value=document.getElementById("adminUrl").textContent;
-  if(!value || value==="保存後に表示されます") return;
-  await navigator.clipboard.writeText(value);
-  alert("admin URLをコピーしました。");
-});
-
 </script>
 </body>
 </html>
