@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>営業所の管理｜本部専用</title>
+<style>
+:root {color-scheme:light;--ink:#291e30;--muted:#716579;--line:#e7dce9;--brand:#47304f;--bg:#f7f3f8;--orange:#db742f}
+* {box-sizing:border-box}
+body {font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;color:var(--ink);background:var(--bg);margin:0}
+header {background:#271c30;color:#fff;padding:22px 18px}
+header .inner {max-width:1040px;margin:auto}
+h1 {font-size:24px;margin:5px 0}header p {font-size:13px;color:#e0d5e4;margin:0}
+main {max-width:1040px;margin:20px auto;padding:0 14px 32px}
+.panel {background:white;border-radius:18px;border:1px solid var(--line);padding:20px;box-shadow:0 8px 25px #25142a0a}
+.columns {display:grid;grid-template-columns:minmax(280px,0.94fr) minmax(320px,1.06fr);gap:16px;align-items:start}
+@media(max-width:730px){.columns{grid-template-columns:1fr}}
+h2 {margin:0 0 12px;font-size:18px}
+small,.note {font-size:12px;color:var(--muted);line-height:1.65}
+label {display:block;font-size:13px;font-weight:700;margin:14px 0 6px}
+input {width:100%;font:inherit;padding:12px;border:1px solid #cec2d3;border-radius:10px;outline-color:var(--orange)}
+input:read-only {background:#f5f2f7;color:#716579}
+button {font:inherit;cursor:pointer;font-weight:700;border:0;border-radius:10px;padding:11px 14px;background:var(--brand);color:white}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.outline {background:white;border:1px solid #beaeca;color:var(--brand)}
+button.orange{background:#b85c1b}
+button.light{background:#f2edf4;color:var(--brand)}
+button.danger{background:#8a3942}
+.button-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.hstack{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#login {max-width:440px;margin:auto}
+#panel{display:none}
+#shopRows{display:grid;gap:8px;margin-top:12px;max-height:420px;overflow:auto}
+.shop-row{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;background:#faf8fb;color:var(--ink);border:1px solid var(--line);padding:13px;border-radius:12px}
+.shop-row.is-selected{border-color:var(--orange);background:#fff7f1}
+.shop-row strong{font-size:15px;display:block}
+.shop-row small{display:block;margin-top:4px}
+.status{font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.status.on{color:#20613f;background:#e7f6ed}.status.off{color:#9a441b;background:#fff1e6}
+.divider{height:1px;background:var(--line);margin:20px 0}
+#message{margin-top:14px;padding:12px;border-radius:10px;background:#f2edf4;white-space:pre-wrap;font-size:13px;line-height:1.5;display:none}
+#message.error{background:#fff0ed;color:#9f2b1c}
+#message.ok{background:#e9f7ee;color:#246340}
+.links a{display:block;margin:7px 0;font-size:13px;color:#634271;overflow-wrap:anywhere}
+.pill{display:inline-block;color:#83521e;background:#fff1e2;font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px}
+</style>
+</head>
+<body>
+<header><div class="inner"><h1>営業所の管理</h1><p>登録済みの営業所を一覧から呼び出して管理できます（本部専用）</p></div></header>
+<main>
+<section class="panel" id="login">
+<h2>本部ログイン</h2>
+<label for="email">本部メール</label><input type="email" autocomplete="username" id="email">
+<label for="password">本部パスワード</label><input type="password" autocomplete="current-password" id="password">
+<button id="signin" type="button" style="margin-top:16px;width:100%">本部ログイン</button>
+</section>
+<section id="panel">
+<div class="hstack" style="margin-bottom:14px"><span class="note" id="signed"></span><button class="light" type="button" id="signout">ログアウト</button></div>
+<div class="columns">
+<section class="panel">
+<div class="hstack"><h2>登録済み営業所</h2><button class="outline" id="reload" type="button">一覧を更新</button></div>
+<p class="note">営業所を選ぶと、登録済みの内容を右側に呼び出します。</p>
+<input id="search" placeholder="営業所名・IDで探す" aria-label="営業所を探す">
+<div id="shopRows"><p class="note">読み込み中…</p></div>
+<div class="button-row"><button type="button" id="new" class="orange">＋ 新しい営業所を登録</button></div>
+</section>
+<section class="panel">
+<div class="hstack"><h2 id="editorTitle">新しい営業所</h2><span id="editorStatus" class="status" style="display:none"></span></div>
+<label for="shop">営業所ID（URLの shop=）</label><input id="shop" maxlength="48" placeholder="例：nagatsuka">
+<label for="name">営業所名</label><input id="name" maxlength="80" placeholder="例：長束営業所">
+<label for="code">受付番号の頭文字（英数字4文字以内）</label><input id="code" maxlength="4" value="C">
+<div id="createPinWrap"><label for="createPin">新規登録用の4桁PIN</label><input id="createPin" maxlength="4" type="password" inputmode="numeric" autocomplete="new-password" placeholder="数字4桁"></div>
+<div class="button-row"><button id="save" type="button">営業所を登録する</button></div>
+<p class="note" id="saveNote">新規登録時は、4桁PINが必要です。</p>
+<div id="existingOnly" style="display:none">
+<div class="divider"></div>
+<h2>受付のON／OFF</h2><div class="button-row"><button id="on" type="button">受付ON</button><button id="off" class="danger" type="button">受付OFF</button></div>
+<p class="note">受付をOFFにすると新規受付・スタッフのデータ操作を制限します。写真自体は削除しません。</p>
+<div class="divider"></div>
+<h2>4桁PINを忘れたとき</h2>
+<p class="note">現在のPINはセキュリティ上、表示・復元できません。新しいPINに再設定してください。再設定しても受付ON／OFFの状態は変わりません。</p>
+<label for="resetPin">新しい4桁PIN</label><input id="resetPin" type="password" maxlength="4" inputmode="numeric" autocomplete="new-password" placeholder="数字4桁">
+<button type="button" id="reset" class="outline" style="margin-top:10px">PINを再設定</button>
+<div class="divider"></div>
+<h2>営業所用URL</h2>
+<div class="links"><a id="adminLink" target="_blank" rel="noopener">営業所管理画面</a><a id="customerLink" target="_blank" rel="noopener">お客様用画面</a></div>
+</div>
+</section>
+</div>
+</section>
+<p id="message" role="status"></p>
+</main>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+import {getFunctions,httpsCallable} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-functions.js';
+
+const config={"apiKey":"AIzaSyBYEoKq_XKcAiRNsYQSI3HsohQif4QYKaw","authDomain":"halloween-calendar-2026.firebaseapp.com","projectId":"halloween-calendar-2026","storageBucket":"halloween-calendar-2026.firebasestorage.app","messagingSenderId":"378243003557","appId":"1:378243003557:web:d726b35327e5903f5a894c"};
+// Firebase Auth の保存状態を営業所管理画面から独立させる。
+const app=initializeApp(config,'halloween-owner-admin');
+const auth=getAuth(app),fn=getFunctions(app,'asia-northeast1');
+
+const call={
+ setShop:httpsCallable(fn,'setShop'),
+ listShops:httpsCallable(fn,'listShops'),
+ updateShopInfo:httpsCallable(fn,'updateShopInfo'),
+ resetShopPin:httpsCallable(fn,'resetShopPin'),
+ setShopEnabled:httpsCallable(fn,'setShopEnabled')
+};
+const $=id=>document.getElementById(id);
+let shops=[],selected=null;
+function message(text,isError=false){const e=$('message');e.style.display='block';e.className=isError?'error':'ok';e.textContent=text;}
+function issue(err){return err?.message||err?.code||String(err);}
+function normalizeShopId(v){const s=v.trim();if(!/^[a-zA-Z0-9_-]{1,48}$/.test(s))throw Error('営業所IDは半角英数字・_・-で48文字以内にしてください');return s;}
+function nameCode(){const shopName=$('name').value.trim(),shopCode=$('code').value.trim().toUpperCase();if(!shopName||shopName.length>80)throw Error('営業所名を入力してください（80文字以内）');if(!/^[A-Z0-9]{1,4}$/.test(shopCode))throw Error('受付番号の頭文字は半角英数字1～4文字です');return {shopName,shopCode};}
+function validPin(s){return /^[0-9]{4}$/.test(s);}
+function setBusy(value){for(const id of ['new','reload','save','off','on','reset']) $(id).disabled=value;}
+function selectShop(entry){
+ selected=entry?.shopId||null;
+ $('shop').value=entry?.shopId||'';
+ $('shop').readOnly=!!entry;
+ $('name').value=entry?.shopName||'';
+ $('code').value=entry?.shopCode||'C';
+ $('createPin').value='';$('resetPin').value='';
+ $('createPinWrap').style.display=entry?'none':'block';
+ $('existingOnly').style.display=entry?'block':'none';
+ $('editorTitle').textContent=entry?'営業所の設定を編集':'新しい営業所';
+ $('save').textContent=entry?'名称・頭文字を保存':'営業所を登録する';
+ $('saveNote').textContent=entry?'4桁PINは変更されません。受付ON／OFFもそのままです。':'新規登録時は、4桁PINが必要です。';
+ const st=$('editorStatus');st.style.display=entry?'inline-block':'none';
+ if(entry){st.textContent=entry.enabled?'受付ON':'受付OFF';st.className='status '+(entry.enabled?'on':'off');}
+ const base=location.origin;
+ if(entry){
+   $('adminLink').href=`${base}/admin.html?shop=${encodeURIComponent(entry.shopId)}`;
+   $('customerLink').href=`${base}/index.html?shop=${encodeURIComponent(entry.shopId)}`;
+ }
+ renderList();
+}
+function renderList(){
+ const list=$('shopRows');list.replaceChildren();
+ const needle=$('search').value.trim().toLocaleLowerCase('ja');
+ const matches=shops.filter(x=>(x.shopName+' '+x.shopId+' '+x.shopCode).toLocaleLowerCase('ja').includes(needle));
+ if(!matches.length){const p=document.createElement('p');p.className='note';p.textContent=shops.length?'一致する営業所はありません。':'登録済みの営業所はありません。';list.append(p);return;}
+ for(const x of matches){
+   const b=document.createElement('button');b.type='button';b.className='shop-row'+(selected===x.shopId?' is-selected':'');
+   const info=document.createElement('span');const strong=document.createElement('strong');strong.textContent=x.shopName||'(名称未登録)';
+   const sub=document.createElement('small');sub.textContent=`ID：${x.shopId} ／ 番号：${x.shopCode||'-'}`;info.append(strong,sub);
+   const tag=document.createElement('span');tag.className='status '+(x.enabled?'on':'off');tag.textContent=x.enabled?'受付ON':'受付OFF';
+   b.append(info,tag);b.onclick=()=>selectShop(x);list.append(b);
+ }
+}
+async function refresh(keepSelected=true){
+ const id=keepSelected?selected:null;
+ const r=await call.listShops({});shops=r.data.shops||[];
+ const chosen=shops.find(x=>x.shopId===id);
+ if(chosen)selectShop(chosen);else if(!keepSelected)selectShop(null);else {selected=null;renderList();}
+}
+$('search').addEventListener('input',renderList);
+$('new').onclick=()=>{selectShop(null);message('新しい営業所の登録画面です。');};
+$('reload').onclick=async()=>{try{setBusy(true);await refresh();message('営業所一覧を更新しました。');}catch(e){message('一覧を更新できません：'+issue(e),true)}finally{setBusy(false)}};
+$('signin').onclick=async()=>{try{$('signin').disabled=true;await signInWithEmailAndPassword(auth,$('email').value,$('password').value);$('password').value='';message('本部ログインしました。');}catch(e){message('本部ログインに失敗しました：'+issue(e),true)}finally{$('signin').disabled=false}};
+onAuthStateChanged(auth,async user=>{
+ $('login').style.display=user?'none':'block';$('panel').style.display=user?'block':'none';
+ $('signed').textContent=user?`本部ログイン中：${user.email||'ユーザー'}`:'';
+ if(user){try{setBusy(true);await refresh(false);}catch(e){message('営業所一覧を取得できません：'+issue(e),true);}finally{setBusy(false)}}
+ else {shops=[];selectShop(null);}
+});
+$('save').onclick=async()=>{
+ try{
+   const shopId=normalizeShopId($('shop').value),data=nameCode();
+   setBusy(true);
+   if(selected){await call.updateShopInfo({shopId,...data});message('営業所名・受付番号の頭文字を保存しました（PIN・受付ON/OFFは変更なし）。');}
+   else {const pin=$('createPin').value;if(!validPin(pin))throw Error('新規登録用PINを数字4桁で入力してください');
+     if(shops.some(x=>x.shopId===shopId))throw Error('この営業所IDは登録済みです。一覧から選択してください');
+     if(!confirm(`${data.shopName}（${shopId}）を登録しますか？`))return;
+     await call.setShop({shopId,pin,...data,enabled:true});$('createPin').value='';message('営業所を登録しました。受付ONです。');
+   }
+   await refresh(false);const e=shops.find(x=>x.shopId===shopId);if(e)selectShop(e);
+ }catch(e){message('保存できません：'+issue(e),true)}finally{setBusy(false)}
+};
+for(const [id,enabled] of [['off',false],['on',true]]){
+ $(id).onclick=async()=>{
+   const x=shops.find(v=>v.shopId===selected);if(!x)return;
+   if(!confirm(`${x.shopName}（${x.shopId}）を${enabled?'再開（ON）':'停止（OFF）'}しますか？`))return;
+   try{setBusy(true);await call.setShopEnabled({shopId:x.shopId,enabled});await refresh();message(enabled?'受付をONにしました。':'受付をOFFにしました。');}
+   catch(e){message('設定変更に失敗しました：'+issue(e),true)}finally{setBusy(false)}
+ };
+}
+$('reset').onclick=async()=>{
+ const x=shops.find(v=>v.shopId===selected);if(!x)return;
+ const pin=$('resetPin').value;
+ if(!validPin(pin)){message('新しいPINを数字4桁で入力してください。',true);return;}
+ if(!confirm(`${x.shopName}の4桁PINを再設定しますか？\n既存のPINは使えなくなります。`))return;
+ try{setBusy(true);await call.resetShopPin({shopId:x.shopId,pin});$('resetPin').value='';message('4桁PINを再設定しました。以前のPINは使えません。');}
+ catch(e){message('PINを変更できません：'+issue(e),true)}finally{setBusy(false)}
+};
+$('signout').onclick=async()=>{try{await signOut(auth);$('email').value='';$('password').value='';message('ログアウトしました。');}catch(e){message(issue(e),true)}};
+</script>
+</body>
+</html>
