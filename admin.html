@@ -79,6 +79,9 @@
     </div>
     <div class="print-position-note">この印刷機で全体が左寄りになる場合の補正です。初期値は右へ2mm。手動・自動印刷の両方に反映し、このPCのブラウザに保存します。印刷画像・受付データは変更しません。</div>
   </details>
+  <div style="font-size:12px;line-height:1.6;color:#655a69;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px" role="note">
+    <strong>写真の保管期限：</strong>受渡済みは受渡から通常約7日、未受渡は受付から30日、送信途中・送信失敗は受付開始から24時間で自動削除します。処理が遅れる場合があります。受付番号などの履歴は残ります。期限後は再印刷できません。
+  </div>
   <div class="filter"><button class="active" data-filter="WAIT">未印刷</button><button data-filter="UPLOAD_ERROR">送信エラー</button><button data-filter="UPLOADING">送信中</button><button data-filter="READY">印刷済み</button><button data-filter="DONE">受渡済み</button><button data-filter="ALL">すべて</button></div>
   <div class="stats" id="stats">読み込み中…</div>
   <div class="grid" id="grid"></div>
@@ -259,7 +262,8 @@
               o.source===SOURCE &&
               (o.status||"WAIT")==="WAIT" &&
               !!o.imageUrl &&
-              !o.autoPrintState
+              !o.autoPrintState &&
+              !o.photoDeletionState
             ){
               enqueueAutoPrint(o);
             }
@@ -289,10 +293,10 @@
       const hasImage=!!o.imageUrl;
       const thumb=hasImage
         ? `<img src="${escapeHtml(o.imageUrl)}" alt="${escapeHtml(o.shortId||o.id)}">`
-        : `<div style="padding:18px;text-align:center;color:#8d7c91;font-weight:800">画像未受信<br><small>${escapeHtml(o.status||"")}</small></div>`;
+        : `<div style="padding:18px;text-align:center;color:#8d7c91;font-weight:800">${o.photoDeletionState==='DELETED'?'保存期限終了・写真削除済':o.photoDeletionState==='DELETING'?'保存期限終了・写真削除中':'画像未受信'}<br><small>${escapeHtml(o.status||"")}</small></div>`;
       const imageActions=hasImage
         ? `<button class="print" data-print="${escapeHtml(o.imageUrl)}" data-orientation="${(o.orientation==="landscape" || Number(o.width)>Number(o.height))?"landscape":"portrait"}">A4で印刷</button>`
-        : `<button class="print" type="button" disabled style="opacity:.35;cursor:not-allowed">画像未受信</button>`;
+        : `<button class="print" type="button" disabled style="opacity:.35;cursor:not-allowed">${o.photoDeletionState?'写真削除済':'画像未受信'}</button>`;
       const err=o.uploadErrorCode?`<br>エラー：<code>${String(o.uploadErrorCode)}</code>`:"";
       const autoState=o.autoPrintState==="PRINTING"
         ? `<br><span style="color:#9a5a10;font-weight:800">自動印刷中…</span>`
@@ -308,7 +312,7 @@
       const isDelivered=status==="DONE";
       const printLabel=isPrinted?"印刷済":"印刷未";
       const deliveryLabel=isDelivered?"受渡済":"受渡未";
-      const deliveryDisabled=!isPrinted && !isDelivered;
+      const deliveryDisabled=(!isPrinted && !isDelivered)||!!o.photoDeletionState;
 
       return `<article class="card" data-id="${escapeHtml(o.id)}">
       <div class="thumb" style="aspect-ratio:${thumbAspect}">${thumb}</div>
@@ -442,6 +446,7 @@
         d.shopId!==shopId ||
         status!=="WAIT" ||
         !d.storagePath ||
+        d.photoDeletionState ||
         d.autoPrintState
       ){
         return null;
