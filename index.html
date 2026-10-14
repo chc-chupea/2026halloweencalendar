@@ -453,7 +453,7 @@
           <div class="notice" id="finalFormat" style="margin:0;padding:11px 12px">A4縦 ／ 写真上＋11月・12月</div>
         </div>
       </div>
-      <label class="privacy"><input type="checkbox" id="consent" /><span>印刷のため、完成した画像を受付側で一時的にお預かりすることに同意します。</span></label>
+      <label class="privacy"><input type="checkbox" id="consent" /><span>印刷のため完成画像を一時保管します。受渡済みにすると通常約7日で画像を自動削除します。未受渡・送信失敗の画像は現状自動削除の対象外です。これに同意します。</span></label>
       <button class="secondary" id="sendBtn" type="button" style="margin-top:12px"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4z"/></svg>このカレンダーを印刷受付へ送る</button>
       <div id="status" class="status"></div>
     </section>
@@ -463,20 +463,27 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, runTransaction, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyBKSYZgaSVTu-HO_lS1Tp2eFjSjMuOONNI",
-      authDomain: "my-uchiwa-queue.firebaseapp.com",
-      projectId: "my-uchiwa-queue",
-      storageBucket: "my-uchiwa-queue.firebasestorage.app",
-      messagingSenderId: "245883628081",
-      appId: "1:245883628081:web:ab7f00f01ba256ebca8310",
-      measurementId: "G-W4S3EKL9TY"
-    };
+  "apiKey": "AIzaSyBYEoKq_XKcAiRNsYQSI3HsohQif4QYKaw",
+  "authDomain": "halloween-calendar-2026.firebaseapp.com",
+  "projectId": "halloween-calendar-2026",
+  "storageBucket": "halloween-calendar-2026.firebasestorage.app",
+  "messagingSenderId": "378243003557",
+  "appId": "1:378243003557:web:d726b35327e5903f5a894c"
+};
 
-    const app = initializeApp(firebaseConfig);
+    import {getAuth, signInAnonymously} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+    import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-functions.js";
+
+    // お客様用は管理画面とは別名のFirebaseアプリを使用し、ログイン状態を分離する。
+    const app = initializeApp(firebaseConfig, "halloween-customer-2026");
+    const auth=getAuth(app);
+    const functions=getFunctions(app,"asia-northeast1");
+    const reserveOrder=httpsCallable(functions,"reserveOrder");
+    const finalizeOrder=httpsCallable(functions,"finalizeOrder");
     const db = getFirestore(app);
     const storage = getStorage(app);
 
@@ -542,7 +549,7 @@
 
     async function loadShopSettings(){
       try{
-        const snap = await getDoc(doc(db,"settings",shopId));
+        const snap = await getDoc(doc(db,"publicShops",shopId));
         shopSettings = snap.exists()
           ? { ...defaultShopSettings, ...snap.data() }
           : { ...defaultShopSettings };
@@ -1578,36 +1585,15 @@
       return `${String(d.getFullYear()).slice(-2)}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
     }
 
-    async function issueQueue(){
+    async function issueQueue(copies){
       await shopSettingsReady;
-
-      const dayKey=getTodayKey();
-      const counterKey = `${shopId}_calendar`;
-      const counterRef=doc(db,"counters",counterKey);
-
-      const num=await runTransaction(db,async tx=>{
-        const snap=await tx.get(counterRef);
-        const current=snap.exists()?(snap.data().lastNumber||0):0;
-        const next=current+1;
-        tx.set(counterRef,{
-          shopId,
-          dayKey,
-          service:"halloween-calendar",
-          lastNumber:next,
-          updatedAt:serverTimestamp()
-        },{merge:true});
-        return next;
-      });
-
-      const serial=String(num).padStart(3,"0");
-      const shortId=`${getShopCode()}${serial}`;
-
-      return {
-        dayKey,
-        serialNo:num,
-        shortId,
-        queueId:`calendar-${shopId}-${dayKey}-${String(num).padStart(4,"0")}`
-      };
+      // 初期認証の復元を待ち、営業所スタッフ等の非匿名ログインを使用しない。
+      await auth.authStateReady();
+      if(!auth.currentUser || !auth.currentUser.isAnonymous) {
+        await signInAnonymously(auth);
+      }
+      const r=await reserveOrder({shopId,copies,orientation,width:W,height:H});
+      return {shortId:r.data.shortId, queueId:r.data.orderId, storagePath:r.data.storagePath};
     }
 
     function canvasToPngBlob(){
@@ -1658,52 +1644,19 @@
         draw();
 
         // 受付番号を発行
-        issued=await issueQueue();
+        issued=await issueQueue(copies);
         drawQueueNumber(issued.shortId);
 
         // DataURLではなくBlobでPNGを生成（スマホのメモリ負荷を抑える）
         const pngBlob=await canvasToPngBlob();
 
-        const storagePath=`orders/${shopId}/${issued.dayKey}/calendar-${issued.shortId}.png`;
+        const storagePath=issued.storagePath;
         const storageRef=ref(storage,storagePath);
-        orderRef=doc(db,"orders",issued.queueId);
-
-        // 画像送信前に受付記録を作る。
-        // 途中で画像送信に失敗しても、管理画面に受付番号が残る。
-        await setDoc(orderRef,{
-          queueId:issued.queueId,
-          shortId:issued.shortId,
-          displayNo:issued.serialNo,
-          serialNo:issued.serialNo,
-          dayKey:issued.dayKey,
-          shopId,
-          shopName:shopSettings.shopName || defaultShopSettings.shopName,
-          shopCode:getShopCode(),
-          copies,
-          template:`A4-photo-calendar-2026-Nov-Dec-${orientation}`,
-          orientation,
-          layoutLabel:getLayoutLabel(),
-          imageUrl:"",
-          storagePath,
-          width:W,height:H,
-          printMarginMm:PRINT_MARGIN_MM,
-          status:"UPLOADING",
-          createdAt:serverTimestamp(),
-          updatedAt:serverTimestamp(),
-          source:SOURCE,
-          productName:"ハロウィン フォトカレンダー 2026"
-        });
+        orderRef=issued.queueId;
 
         // 最大3回まで自動再試行
         await uploadBlobWithRetry(storageRef,pngBlob,3);
-        const imageUrl=await getDownloadURL(storageRef);
-
-        // 画像URLが取れた時点で通常受付へ
-        await setDoc(orderRef,{
-          imageUrl,
-          status:"WAIT",
-          updatedAt:serverTimestamp()
-        },{merge:true});
+        await finalizeOrder({orderId:issued.queueId});
 
         setStatus("success",`送信できました<span class="number">${issued.shortId}</span>${shopSettings.shopName || defaultShopSettings.shopName}の受付番号です。<br>スクリーンショットで保存してください。`);
         btn.style.display="none";
@@ -1711,18 +1664,7 @@
       }catch(err){
         console.error(err);
 
-        // Firestoreまで到達できる場合は「画像送信失敗」を管理側に残す
-        if(orderRef){
-          try{
-            await setDoc(orderRef,{
-              status:"UPLOAD_ERROR",
-              uploadErrorCode:String(err?.code||err?.message||"unknown"),
-              updatedAt:serverTimestamp()
-            },{merge:true});
-          }catch(e){
-            console.error("UPLOAD_ERROR記録にも失敗:",e);
-          }
-        }
+        if(orderRef){try{await finalizeOrder({orderId:orderRef,error:true});}catch(e){console.error(e);}}
 
         const no = issued?.shortId ? `<br>受付番号：<b>${issued.shortId}</b>` : "";
         setStatus("error",`送信が完了していません。${no}<br>通信状態を確認して、もう一度送信してください。<br><small>${String(err?.code||err?.message||"")}</small>`);
