@@ -50,6 +50,12 @@
   .auto-print-status.busy{color:#9a5a10;font-weight:800}
   .auto-print-status.ok{color:#23623f;font-weight:800}
   .auto-print-status.error{color:#a02a20;font-weight:800}
+  .print-position-panel{margin:0 0 12px;padding:10px 14px;background:#fff;border:1px solid var(--line);border-radius:14px;font-size:13px}
+  .print-position-panel summary{font-weight:850;cursor:pointer;color:#382640}
+  .print-position-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 5px}
+  .print-position-controls button{border:1px solid #d9cedd;background:#f6f0f7;color:#35283c;padding:8px 11px}
+  .print-position-controls output{display:inline-block;min-width:92px;text-align:center;font-weight:900;font-variant-numeric:tabular-nums}
+  .print-position-note{font-size:11px;color:var(--muted);line-height:1.5}
 </style>
 </head>
 <body>
@@ -63,6 +69,16 @@
     <button class="auto-print-toggle" id="autoPrintToggle" type="button" aria-pressed="false">自動印刷 OFF</button>
     <div class="auto-print-status" id="autoPrintStatus">手動印刷モードです。</div>
   </div>
+  <details class="print-position-panel">
+    <summary>印刷位置の調整（このPCのみ）</summary>
+    <div class="print-position-controls">
+      <button type="button" id="printShiftLeft">← 0.5mm</button>
+      <output id="printShiftValue" aria-live="polite">右へ 2.0mm</output>
+      <button type="button" id="printShiftRight">0.5mm →</button>
+      <button type="button" id="printShiftReset">補正なし（0mm）</button>
+    </div>
+    <div class="print-position-note">この印刷機で全体が左寄りになる場合の補正です。初期値は右へ2mm。手動・自動印刷の両方に反映し、このPCのブラウザに保存します。印刷画像・受付データは変更しません。</div>
+  </details>
   <div class="filter"><button class="active" data-filter="WAIT">未印刷</button><button data-filter="UPLOAD_ERROR">送信エラー</button><button data-filter="UPLOADING">送信中</button><button data-filter="READY">印刷済み</button><button data-filter="DONE">受渡済み</button><button data-filter="ALL">すべて</button></div>
   <div class="stats" id="stats">読み込み中…</div>
   <div class="grid" id="grid"></div>
@@ -306,13 +322,34 @@
       </div></div></article>`;
     }).join("");
   }
+  // プリンタ固有の紙送り左右位置のズレを補正。HTML画像とFirestoreには触れない。
+  // 初期値+2mmは提出されたA4実物の左右余白差(約4mm)に基づく目安。
+  // 操作したPCのブラウザにだけ保存され、ほかのPCでは個別に変更できる。
+  const PRINT_SHIFT_KEY="halloween-calendar-print-shift-mm-v1";
+  const limitPrintShift=v=>Math.max(-5,Math.min(5,Math.round(v*2)/2));
+  const savedPrintShift=localStorage.getItem(PRINT_SHIFT_KEY);
+  let printShiftMm=(savedPrintShift===null || !Number.isFinite(Number(savedPrintShift)))?2:limitPrintShift(Number(savedPrintShift));
+  const printShiftValue=document.getElementById("printShiftValue");
+  function showPrintShift(){
+    printShiftValue.textContent=printShiftMm===0?"補正なし（0mm）":`${printShiftMm>0?"右":"左"}へ ${Math.abs(printShiftMm).toFixed(1)}mm`;
+  }
+  function setPrintShift(v){
+    printShiftMm=limitPrintShift(v);
+    localStorage.setItem(PRINT_SHIFT_KEY,String(printShiftMm));
+    showPrintShift();
+  }
+  document.getElementById("printShiftLeft").addEventListener("click",()=>setPrintShift(printShiftMm-0.5));
+  document.getElementById("printShiftRight").addEventListener("click",()=>setPrintShift(printShiftMm+0.5));
+  document.getElementById("printShiftReset").addEventListener("click",()=>setPrintShift(0));
+  showPrintShift();
+
   function printImage(url,orientation="portrait"){
     const isLandscape=orientation==="landscape";
     const pageSize=isLandscape?"A4 landscape":"A4 portrait";
     const pageW=isLandscape?"297mm":"210mm";
     const pageH=isLandscape?"210mm":"297mm";
     const w=window.open("","_blank");if(!w){alert("ポップアップがブロックされました。");return;}
-    w.document.write(`<!doctype html><html><head><title>A4印刷</title><style>@page{size:${pageSize};margin:0}html,body{margin:0;width:${pageW};height:${pageH}}img{width:${pageW};height:${pageH};object-fit:fill;display:block}</style></head><body><img src="${url}" onload="setTimeout(()=>window.print(),250)"></body></html>`);w.document.close();
+    w.document.write(`<!doctype html><html><head><title>A4印刷</title><style>@page{size:${pageSize};margin:0}html,body{margin:0;width:${pageW};height:${pageH}}img{width:${pageW};height:${pageH};object-fit:fill;display:block;transform:translateX(${printShiftMm}mm)}</style></head><body><img src="${url}" onload="setTimeout(()=>window.print(),250)"></body></html>`);w.document.close();
   }
 
   // 印刷前に画像の実データと描画完了を確認する。
@@ -339,7 +376,7 @@
       const html=`<!doctype html><html><head><meta charset="utf-8"><title>自動印刷</title>
         <style>@page{size:${pageSize};margin:0}html,body{margin:0;padding:0}
         .page{width:${pageW};height:${pageH};overflow:hidden;page-break-after:always}
-        .page:last-child{page-break-after:auto}img{width:${pageW};height:${pageH};object-fit:fill;display:block}
+        .page:last-child{page-break-after:auto}img{width:${pageW};height:${pageH};object-fit:fill;display:block;transform:translateX(${printShiftMm}mm)}
         </style></head><body>${pages}</body></html>`;
       let settled=false;
       let timeoutId;
