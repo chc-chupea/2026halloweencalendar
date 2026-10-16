@@ -129,10 +129,15 @@ function selectShop(entry){
  $('saveNote').textContent=entry?'4桁PINは変更されません。受付ON／OFFもそのままです。':'新規登録時は、4桁PINが必要です。';
  const st=$('editorStatus');st.style.display=entry?'inline-block':'none';
  if(entry){st.textContent=entry.enabled?'受付ON':'受付OFF';st.className='status '+(entry.enabled?'on':'off');}
- const base=location.origin;
+ // Use the directory containing owner.html, not the domain root.
+ // GitHub Pages project URLs include /2026halloweencalendar/.
  if(entry){
-   $('adminLink').href=`${base}/admin.html?shop=${encodeURIComponent(entry.shopId)}`;
-   $('customerLink').href=`${base}/index.html?shop=${encodeURIComponent(entry.shopId)}`;
+   const adminUrl=new URL('admin.html',location.href);
+   adminUrl.searchParams.set('shop',entry.shopId);
+   const customerUrl=new URL('index.html',location.href);
+   customerUrl.searchParams.set('shop',entry.shopId);
+   $('adminLink').href=adminUrl.href;
+   $('customerLink').href=customerUrl.href;
  }
  renderList();
 }
