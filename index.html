@@ -334,6 +334,21 @@
     @media(max-width:640px), (max-width:1024px) and (pointer:coarse){
       #editCard .zoom-row,
       #editCard .rotate-row{display:none}
+
+      /* 3つの操作ボタンを、上下の余白を抑えた高さにする。 */
+      #resetPhoto,#autoEnhance,#resetCorrection{
+        min-height:36px;
+        padding:5px 6px;
+        line-height:20px;
+        border-radius:11px;
+      }
+      #resetPhoto{font-size:14px}
+      #autoEnhance,#resetCorrection{font-size:12px}
+      #resetPhoto .btn-icon,#autoEnhance .btn-icon,#resetCorrection .btn-icon{
+        width:16px;height:16px;
+        margin-right:3px;
+        vertical-align:-3px;
+      }
     }
 
   </style>
