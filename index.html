@@ -245,23 +245,16 @@
       background:#faf6fb;color:#66586b;font-size:12px;line-height:1.6;
     }
     .reselect-box{
-      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;
       margin:0 0 14px;padding:12px 13px;
       border-radius:17px;background:#fff7ef;border:1px solid #f2dcc8;
     }
     .reselect-copy{min-width:0}
     .reselect-copy b{display:block;font-size:13px;color:#4d394e;margin-bottom:2px}
     .reselect-copy span{display:block;font-size:11px;color:#827485;line-height:1.45}
-    .reselect-label{
-      flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;
-      padding:10px 13px;border-radius:999px;
-      background:#fff;color:#b95514;border:1px solid #e7b98f;
-      font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;
-      box-shadow:0 4px 12px rgba(179,85,20,.08);
-    }
-    .reselect-label svg{
-      width:16px;height:16px;fill:none;stroke:currentColor;
-      stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+    .reselect-box .photo-source-actions{width:280px;max-width:100%;flex:none}
+    .reselect-box .photo-source-actions button{
+      min-height:36px;padding:6px 4px;border-radius:11px;
     }
     .canvas-wrap{
       background:linear-gradient(135deg,#302536,#221b28);
@@ -342,6 +335,9 @@
 
     /* スマホでは、写真の拡大・回転スライダーだけを非表示にする。 */
     @media(max-width:640px), (max-width:1024px) and (pointer:coarse){
+      .reselect-box{gap:6px;padding:8px 10px}
+      .reselect-box .photo-source-actions{width:100%}
+
       #editCard .zoom-row,
       #editCard .rotate-row{display:none}
 
@@ -393,8 +389,8 @@
       <div class="layout-hint" id="layoutHint">横構図を選択中。スマホの縦写真が入りやすい構図です。</div>
 
       <div class="photo-source-actions" role="group" aria-label="写真の取り込み方法">
-        <button class="file-label" id="takePhoto" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="4"/></svg>写真を撮る</button>
-        <button class="file-label" id="choosePhoto" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg>ライブラリから選ぶ</button>
+        <button class="file-label" id="takePhoto" type="button" data-photo-source="camera"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="4"/></svg>写真を撮る</button>
+        <button class="file-label" id="choosePhoto" type="button" data-photo-source="library"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg>ライブラリから選ぶ</button>
       </div>
       <input id="cameraInput" type="file" accept="image/*" capture="environment" />
       <input id="photoInput" type="file" accept="image/*" />
@@ -408,10 +404,10 @@
           <b>別の写真にしたくなったら</b>
           <span>ここから何度でも選び直せます。</span>
         </div>
-        <label class="reselect-label" for="photoInput">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
-          写真をえらび直す
-        </label>
+        <div class="photo-source-actions" role="group" aria-label="写真をえらび直す">
+          <button class="file-label" type="button" data-photo-source="camera">写真を撮る</button>
+          <button class="file-label" type="button" data-photo-source="library">ライブラリから選ぶ</button>
+        </div>
       </div>
       <div class="canvas-wrap">
         <canvas id="calendarCanvas" width="2480" height="3508" aria-label="A4カレンダープレビュー"></canvas>
@@ -470,10 +466,10 @@
           <b>写真を変えたい？</b>
           <span>別の写真を選ぶと、すぐ編集し直せます。</span>
         </div>
-        <label class="reselect-label" for="photoInput">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
-          写真をえらび直す
-        </label>
+        <div class="photo-source-actions" role="group" aria-label="写真をえらび直す">
+          <button class="file-label" type="button" data-photo-source="camera">写真を撮る</button>
+          <button class="file-label" type="button" data-photo-source="library">ライブラリから選ぶ</button>
+        </div>
       </div>
       <div class="order-grid">
         <div>
@@ -1307,8 +1303,12 @@
       btn.addEventListener("click",()=>setOrientation(btn.dataset.layout));
     });
 
-    document.getElementById("takePhoto").addEventListener("click",()=>cameraInput.click());
-    document.getElementById("choosePhoto").addEventListener("click",()=>photoInput.click());
+    document.querySelectorAll("button[data-photo-source]").forEach(button=>{
+      button.addEventListener("click",()=>{
+        const input=button.dataset.photoSource==="camera" ? cameraInput : photoInput;
+        input.click();
+      });
+    });
 
     function handlePhotoSelection(e){
       const input=e.currentTarget;
