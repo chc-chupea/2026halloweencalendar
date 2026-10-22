@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1a1322" />
   <title>ハロウィン フォトカレンダー 2026</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playball&display=swap" rel="stylesheet">
   <style>
     :root{
       --ink:#231b2b;
@@ -927,7 +928,8 @@
       const gridW = width - pad*2;
       const gridH = height - headerH - dowH - 56;
       const colW = gridW / 7;
-      const rowH = gridH / 6;
+      const weekRows = Math.ceil((first + days) / 7);
+      const rowH = gridH / weekRows;
       const { first, days } = monthData(YEAR, month-1);
 
       ctx.save();
@@ -936,10 +938,16 @@
 
       ctx.fillStyle="#2c2133";
       ctx.textAlign="left";
-      ctx.font="800 88px sans-serif";
-      ctx.fillText(`${month}月`,x+pad,y+112);
+      // 見本風：太めのセリフ数字と筆記体の英語月名（レイアウト寸法は変更しない）
+      ctx.textBaseline="alphabetic";
+      ctx.font='bold 88px Georgia, "Times New Roman", serif';
+      const monthNumber = String(month);
+      ctx.fillText(monthNumber,x+pad,y+112);
+      const numberWidth=ctx.measureText(monthNumber).width;
+      ctx.font='76px "Playball", "Brush Script MT", "Segoe Script", Georgia, cursive';
+      ctx.fillText(month === 11 ? "November" : "December",x+pad+numberWidth+28,y+112);
       ctx.fillStyle="#ed7a20";
-      ctx.font="800 34px sans-serif";
+      ctx.font='bold 34px Georgia, "Times New Roman", serif';
       ctx.fillText("2026",x+pad,y+160);
 
       ctx.strokeStyle="#e7ded6";
@@ -949,7 +957,7 @@
       const dows=["日","月","火","水","木","金","土"];
       ctx.textAlign="center";
       ctx.textBaseline="middle";
-      ctx.font="700 34px sans-serif";
+      ctx.font='bold 37px Georgia, "Yu Mincho", serif';
       dows.forEach((d,i)=>{
         ctx.fillStyle=i===0?"#c43a32":i===6?"#3267b1":"#5d5262";
         ctx.fillText(d,gridX+colW*(i+.5),y+headerH+dowH/2);
@@ -960,11 +968,11 @@
       for(let i=0;i<=7;i++){
         const gx=gridX+colW*i;ctx.beginPath();ctx.moveTo(gx,gridY);ctx.lineTo(gx,gridY+gridH);ctx.stroke();
       }
-      for(let r=0;r<=6;r++){
+      for(let r=0;r<=weekRows;r++){
         const gy=gridY+rowH*r;ctx.beginPath();ctx.moveTo(gridX,gy);ctx.lineTo(gridX+gridW,gy);ctx.stroke();
       }
 
-      ctx.font="700 47px sans-serif";
+      ctx.font='bold 57px Georgia, "Times New Roman", serif';
       for(let day=1;day<=days;day++){
         const cell=first+day-1;
         const col=cell%7;
@@ -972,7 +980,9 @@
         const cx=gridX+colW*col+18;
         const cy=gridY+rowH*row+32;
         ctx.textAlign="left";ctx.textBaseline="top";
-        const isHoliday = month === 11 && (day === 3 || day === 23);
+        // 2026年の国民の祝日：11/3 文化の日、11/23 勤労感謝の日。12月はなし。
+        const holidays2026 = { 11:[3,23], 12:[] };
+        const isHoliday = (holidays2026[month] || []).includes(day);
         ctx.fillStyle=(col===0 || isHoliday)?"#c43a32":col===6?"#3267b1":"#342b38";
         ctx.fillText(String(day),cx,cy);
       }
@@ -1189,6 +1199,10 @@
       const decorY = r.y + r.h - decorH;
       ctx.drawImage(bottomDecor, decorX, decorY, decorW, decorH);
       ctx.restore();
+    }
+
+    if(document.fonts && document.fonts.load){
+      document.fonts.load('76px "Playball"').then(()=>draw()).catch(()=>{});
     }
 
     function drawCalendar(){
