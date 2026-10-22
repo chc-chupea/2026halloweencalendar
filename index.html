@@ -928,9 +928,9 @@
       const gridW = width - pad*2;
       const gridH = height - headerH - dowH - 56;
       const colW = gridW / 7;
+      const { first, days } = monthData(YEAR, month-1);
       const weekRows = Math.ceil((first + days) / 7);
       const rowH = gridH / weekRows;
-      const { first, days } = monthData(YEAR, month-1);
 
       ctx.save();
       ctx.fillStyle="#fff";
