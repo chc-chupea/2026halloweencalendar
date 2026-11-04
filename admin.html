@@ -28,11 +28,18 @@
   .state-toggle.on.delivered{background:#eceaf1;color:#4f4654;border-color:#d9d4de}
   .state-toggle:disabled{opacity:.38;cursor:not-allowed}
   .empty{padding:40px;text-align:center;color:#7b7080;background:#fff;border-radius:16px}
-  .reception-stopped{padding:24px;margin:0 0 16px;border:1px solid #ead0a4;border-radius:16px;background:#fff4e8;color:#76431e;line-height:1.8}
-  .reception-stopped h2{font-size:22px;margin:0 0 8px}
-  .reception-stopped p{margin:0 0 8px}
+  /* 受付OFF時の最上部のお知らせ。PINログイン画面（z-index:9999）の上にも表示。 */
+  .reception-stopped{position:sticky;top:0;z-index:12000;width:100%;padding:17px 20px 19px;margin:0;border:0;border-bottom:5px solid #b94523;border-radius:0;background:#fff0df;color:#642a1b;box-shadow:0 5px 22px rgba(67,24,16,.20);line-height:1.65;max-height:70dvh;overflow:auto}
+  .reception-stopped-inner{max-width:1180px;margin:0 auto}
+  .reception-stopped-label{display:inline-block;font-size:12px;font-weight:900;letter-spacing:.06em;color:#8b311b;margin-bottom:4px}
+  .reception-stopped h2{font-size:clamp(24px,3.9vw,34px);font-weight:900;line-height:1.35;margin:0 0 9px}
+  .reception-stopped-symbol{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#aa3820;color:#fff;font-size:24px;vertical-align:3px}
+  .reception-stopped p{margin:0 0 8px;font-size:14px}
+  .reception-stopped .reception-stopped-lead{font-size:16px;font-weight:850}
   .reception-stopped[hidden],#adminWorkingArea[hidden],#pinStoppedNotice[hidden]{display:none!important}
-  .reception-stopped button{background:#654672;color:#fff}
+  .reception-stopped button{background:#5b344d;color:#fff;margin-top:5px;padding:11px 16px}
+  @media(max-width:600px){.reception-stopped{padding:14px 16px}.reception-stopped-symbol{width:29px;height:29px;font-size:20px;vertical-align:2px}.reception-stopped p{font-size:13px}.reception-stopped .reception-stopped-lead{font-size:15px}}
+ 
   #pinStoppedNotice{margin:14px 0;padding:14px;background:#fff4e8;color:#76431e;border:1px solid #ead0a4;border-radius:12px;font-size:14px;line-height:1.7;text-align:left}
   .auto-print-panel{
     display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
@@ -65,14 +72,18 @@
 </style>
 </head>
 <body>
+  <section id="adminStopNotice" class="reception-stopped" role="status" aria-live="polite" hidden>
+    <div class="reception-stopped-inner">
+      <div class="reception-stopped-label">受付状況のお知らせ</div>
+      <h2><span class="reception-stopped-symbol" aria-hidden="true">!</span> 現在、この営業所は受付停止中です</h2>
+      <p class="reception-stopped-lead">本部の設定により、現在は受付・印刷・データ操作を利用できません。</p>
+      <p>再開するには、本部管理者に「受付ON」への切り替えを依頼してください。<br>受付停止だけで保存済みの写真や履歴は削除されません（通常の自動削除期限は適用されます）。</p>
+      <button type="button" id="recheckReception">受付状態を再確認する</button>
+    </div>
+  </section>
 <section id="pinGate" style="position:fixed;z-index:9999;inset:0;background:#f6f2f7;display:flex;align-items:center;justify-content:center;padding:20px"><form id="pinForm" style="background:white;padding:30px;max-width:360px;width:100%;border-radius:18px;text-align:center;box-shadow:0 8px 28px #0001"><h2 id="pinHeading">営業所 管理ログイン</h2><p id="pinShop"></p><div id="pinStoppedNotice" role="status" hidden><b>本部の設定により、受付を停止しています。</b><br>現在、営業所管理画面はご利用いただけません。<br>受付を再開する場合は、本部管理者にご連絡ください。</div><input id="pinInput" type="password" inputmode="numeric" autocomplete="off" maxlength="4" pattern="[0-9]{4}" placeholder="暗証番号4桁" required style="font-size:24px;letter-spacing:10px;width:100%;padding:12px;text-align:center;border:1px solid #ddd;border-radius:12px"><button type="submit" style="width:100%;margin-top:18px;background:#e87521;color:white">管理画面を開く</button><p id="pinError" style="color:#a02a20"></p></form></section><header><div class="bar"><div><h1 id="adminTitle">ハロウィンカレンダー 印刷受付</h1><div class="sub"><span id="adminShopName">会場を読み込み中…</span> ／ <span id="adminShopId"></span></div></div><button class="refresh" id="refresh">更新</button></div></header>
 <main class="wrap">
-  <section id="adminStopNotice" class="reception-stopped" role="status" aria-live="polite" hidden>
-    <h2>現在、この営業所は受付停止中です</h2>
-    <p>本部の設定で受付がOFFになっています。新しい申し込みの受付・管理画面での印刷やデータ操作はできません。</p>
-    <p>受付を再開する場合は、本部管理者に「受付ON」への変更を依頼してください。<br>受付OFFの操作だけで写真や受付履歴が削除されることはありません。ただし、通常の写真の自動削除期限は適用されます。</p>
-    <button type="button" id="recheckReception">受付状態を再確認</button>
-  </section>
+
   <div id="adminWorkingArea">
   <div class="auto-print-panel">
     <div class="auto-print-copy">
@@ -137,6 +148,8 @@
     document.getElementById("pinError").textContent="";
     document.getElementById("adminStopNotice").hidden=!receptionDisabled;
     document.getElementById("adminWorkingArea").hidden=receptionDisabled;
+    // OFF中はログイン画面を覆い隠し、最上部の停止案内を優先する。
+    pinGate.style.display=receptionDisabled||authenticatedShop?'none':'flex';
     if(receptionDisabled){
       // 停止中は受付監視・自動印刷キューを動かさない（端末のON設定は保持）。
       if(unsubscribeOrders){unsubscribeOrders();unsubscribeOrders=null;}
@@ -213,7 +226,7 @@
       return;
     }}
     authenticatedShop=false;
-    pinGate.style.display='flex';clearPhotoCache();autoPrintQueue=[];queuedOrderIds.clear();if(unsubscribeOrders){unsubscribeOrders();unsubscribeOrders=null;}all=[];grid.innerHTML='';
+    pinGate.style.display=receptionDisabled?'none':'flex';clearPhotoCache();autoPrintQueue=[];queuedOrderIds.clear();if(unsubscribeOrders){unsubscribeOrders();unsubscribeOrders=null;}all=[];grid.innerHTML='';
   });
   const imageCache=new Map();
   function clearPhotoCache(path){

@@ -101,10 +101,15 @@
     .status.success{display:block;background:#ecf8f0;color:#205f3b}
     .status.error{display:block;background:#fff0ef;color:#9a221a}
     .status.stopped{display:block;background:#fff4e8;color:#76431e}
-    .reception-notice{margin:0 0 16px;padding:20px;border:1px solid #f0d1a8;border-radius:18px;background:#fff4e8;color:#754012;box-shadow:var(--shadow);line-height:1.7}
-    .reception-notice strong{display:block;font-size:21px;margin-bottom:5px}
-    .reception-notice p{margin:0;font-size:14px}
-    .reception-notice[hidden]{display:none}
+    /* 全画面幅の最上部に受付OFFの告知を常時表示（スクロール中も見える）。 */
+    .reception-notice{position:sticky;top:0;z-index:1000;width:100%;margin:0;padding:18px 20px 20px;border:0;border-bottom:5px solid #b94523;border-radius:0;background:#fff0df;color:#642a1b;box-shadow:0 5px 22px rgba(67,24,16,.18);line-height:1.65;max-height:65dvh;overflow:auto}
+    .reception-notice-inner{max-width:980px;margin:auto}
+    .reception-notice-label{display:inline-block;font-size:12px;font-weight:900;letter-spacing:.06em;color:#8b311b;margin-bottom:4px}
+    .reception-notice strong{display:block;font-size:clamp(23px,4vw,32px);font-weight:900;line-height:1.35;margin:0 0 10px}
+    .reception-notice-symbol{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#aa3820;color:#fff;font-size:23px;vertical-align:2px}
+    .reception-notice p{margin:0;font-size:16px;font-weight:650}
+    .reception-notice[hidden]{display:none!important}
+    @media(max-width:600px){.reception-notice{padding:14px 16px}.reception-notice strong{font-size:23px}.reception-notice-symbol{width:28px;height:28px;font-size:20px}.reception-notice p{font-size:14px}}
     #sendBtn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
     .number{font-size:34px;letter-spacing:.08em;color:#173f2a;display:block;margin:7px 0}
     .privacy{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.55}
@@ -367,11 +372,14 @@
   </style>
 </head>
 <body>
-  <main class="shell">
-    <div id="receptionNotice" class="reception-notice" role="status" aria-live="polite" hidden>
-      <strong>ただいま、カレンダーの受付を停止しています</strong>
-      <p>この営業所では、ただいま新しいお申し込みを受け付けていません。再開までお待ちください。</p>
+  <div id="receptionNotice" class="reception-notice" role="status" aria-live="polite" hidden>
+    <div class="reception-notice-inner">
+      <div class="reception-notice-label">受付状況のお知らせ</div>
+      <strong><span class="reception-notice-symbol" aria-hidden="true">!</span> ただいま、カレンダーの受付を停止しています</strong>
+      <p>この営業所では現在、お申し込みを受け付けていません。<b>写真の送信もできません。</b>受付再開後にご利用ください。</p>
     </div>
+  </div>
+  <main class="shell">
     <section class="hero">
       <div class="shop-badge"><span class="code" id="shopCodeBadge">C</span><span id="shopNameBadge">会場を読み込み中…</span></div>
       <div class="hero-badge">HALLOWEEN PHOTO CALENDAR 2026</div>
