@@ -28,6 +28,12 @@
   .state-toggle.on.delivered{background:#eceaf1;color:#4f4654;border-color:#d9d4de}
   .state-toggle:disabled{opacity:.38;cursor:not-allowed}
   .empty{padding:40px;text-align:center;color:#7b7080;background:#fff;border-radius:16px}
+  .reception-stopped{padding:24px;margin:0 0 16px;border:1px solid #ead0a4;border-radius:16px;background:#fff4e8;color:#76431e;line-height:1.8}
+  .reception-stopped h2{font-size:22px;margin:0 0 8px}
+  .reception-stopped p{margin:0 0 8px}
+  .reception-stopped[hidden],#adminWorkingArea[hidden],#pinStoppedNotice[hidden]{display:none!important}
+  .reception-stopped button{background:#654672;color:#fff}
+  #pinStoppedNotice{margin:14px 0;padding:14px;background:#fff4e8;color:#76431e;border:1px solid #ead0a4;border-radius:12px;font-size:14px;line-height:1.7;text-align:left}
   .auto-print-panel{
     display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
     margin-bottom:12px;padding:12px 14px;border-radius:14px;
@@ -59,8 +65,15 @@
 </style>
 </head>
 <body>
-<section id="pinGate" style="position:fixed;z-index:9999;inset:0;background:#f6f2f7;display:flex;align-items:center;justify-content:center;padding:20px"><form id="pinForm" style="background:white;padding:30px;max-width:360px;width:100%;border-radius:18px;text-align:center;box-shadow:0 8px 28px #0001"><h2>営業所 管理ログイン</h2><p id="pinShop"></p><input id="pinInput" type="password" inputmode="numeric" autocomplete="off" maxlength="4" pattern="[0-9]{4}" placeholder="暗証番号4桁" required style="font-size:24px;letter-spacing:10px;width:100%;padding:12px;text-align:center;border:1px solid #ddd;border-radius:12px"><button type="submit" style="width:100%;margin-top:18px;background:#e87521;color:white">管理画面を開く</button><p id="pinError" style="color:#a02a20"></p></form></section><header><div class="bar"><div><h1 id="adminTitle">ハロウィンカレンダー 印刷受付</h1><div class="sub"><span id="adminShopName">会場を読み込み中…</span> ／ <span id="adminShopId"></span></div></div><button class="refresh" id="refresh">更新</button></div></header>
+<section id="pinGate" style="position:fixed;z-index:9999;inset:0;background:#f6f2f7;display:flex;align-items:center;justify-content:center;padding:20px"><form id="pinForm" style="background:white;padding:30px;max-width:360px;width:100%;border-radius:18px;text-align:center;box-shadow:0 8px 28px #0001"><h2 id="pinHeading">営業所 管理ログイン</h2><p id="pinShop"></p><div id="pinStoppedNotice" role="status" hidden><b>本部の設定により、受付を停止しています。</b><br>現在、営業所管理画面はご利用いただけません。<br>受付を再開する場合は、本部管理者にご連絡ください。</div><input id="pinInput" type="password" inputmode="numeric" autocomplete="off" maxlength="4" pattern="[0-9]{4}" placeholder="暗証番号4桁" required style="font-size:24px;letter-spacing:10px;width:100%;padding:12px;text-align:center;border:1px solid #ddd;border-radius:12px"><button type="submit" style="width:100%;margin-top:18px;background:#e87521;color:white">管理画面を開く</button><p id="pinError" style="color:#a02a20"></p></form></section><header><div class="bar"><div><h1 id="adminTitle">ハロウィンカレンダー 印刷受付</h1><div class="sub"><span id="adminShopName">会場を読み込み中…</span> ／ <span id="adminShopId"></span></div></div><button class="refresh" id="refresh">更新</button></div></header>
 <main class="wrap">
+  <section id="adminStopNotice" class="reception-stopped" role="status" aria-live="polite" hidden>
+    <h2>現在、この営業所は受付停止中です</h2>
+    <p>本部の設定で受付がOFFになっています。新しい申し込みの受付・管理画面での印刷やデータ操作はできません。</p>
+    <p>受付を再開する場合は、本部管理者に「受付ON」への変更を依頼してください。<br>受付OFFの操作だけで写真や受付履歴が削除されることはありません。ただし、通常の写真の自動削除期限は適用されます。</p>
+    <button type="button" id="recheckReception">受付状態を再確認</button>
+  </section>
+  <div id="adminWorkingArea">
   <div class="auto-print-panel">
     <div class="auto-print-copy">
       <div class="auto-print-title">このPCの自動印刷</div>
@@ -85,10 +98,11 @@
   <div class="filter"><button class="active" data-filter="WAIT">未印刷</button><button data-filter="UPLOAD_ERROR">送信エラー</button><button data-filter="UPLOADING">送信中</button><button data-filter="READY">印刷済み</button><button data-filter="DONE">受渡済み</button><button data-filter="ALL">すべて</button></div>
   <div class="stats" id="stats">読み込み中…</div>
   <div class="grid" id="grid"></div>
+  </div>
 </main>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-  import { getFirestore, collection, query, where, doc, getDoc, updateDoc, serverTimestamp, deleteField, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  import { getFirestore, collection, query, where, doc, getDoc, getDocFromServer, updateDoc, serverTimestamp, deleteField, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
   const firebaseConfig = {
   "apiKey": "AIzaSyBYEoKq_XKcAiRNsYQSI3HsohQif4QYKaw",
   "authDomain": "halloween-calendar-2026.firebaseapp.com",
@@ -111,14 +125,62 @@
   const shopId=(params.get("shop")||"main").replace(/[^a-zA-Z0-9_-]/g,"")||"main";
   const defaultSettings={shopName:"ハロウィンカレンダー会場",shopCode:"C"};
   let shopSettings={...defaultSettings};
+  let receptionDisabled=false;
+  let receptionStateKnown=false;
+  let authenticatedShop=false;
+
+  function applyReceptionUI(){
+    document.getElementById("pinStoppedNotice").hidden=!receptionDisabled;
+    document.getElementById("pinHeading").textContent=receptionDisabled?"現在、受付停止中です":"営業所 管理ログイン";
+    document.getElementById("pinInput").style.display=receptionDisabled?"none":"";
+    document.querySelector('#pinForm button[type="submit"]').style.display=receptionDisabled?"none":"";
+    document.getElementById("pinError").textContent="";
+    document.getElementById("adminStopNotice").hidden=!receptionDisabled;
+    document.getElementById("adminWorkingArea").hidden=receptionDisabled;
+    if(receptionDisabled){
+      // 停止中は受付監視・自動印刷キューを動かさない（端末のON設定は保持）。
+      if(unsubscribeOrders){unsubscribeOrders();unsubscribeOrders=null;}
+      autoPrintQueue=[];queuedOrderIds.clear();snapshotInitialized=false;
+      all=[];grid.innerHTML="";
+      clearPhotoCache();
+      setAutoPrintStatus("本部の設定により受付停止中です。","error");
+    }else{
+      updateAutoPrintUI();
+    }
+  }
+
+  function applyPublicShopSnapshot(snap){
+    if(!snap.exists())return false;
+    const data=snap.data();
+    const wasDisabled=receptionDisabled;
+    shopSettings={...defaultSettings,...data};
+    receptionStateKnown=typeof data.enabled==="boolean";
+    receptionDisabled=data.enabled===false;
+    document.getElementById("adminShopName").textContent=shopSettings.shopName||defaultSettings.shopName;
+    document.getElementById("adminShopId").textContent=`shop=${shopId}`;
+    document.getElementById("adminTitle").textContent=`${shopSettings.shopName||defaultSettings.shopName}｜印刷受付`;
+    document.title=`${shopSettings.shopName||defaultSettings.shopName}｜カレンダー印刷受付`;
+    applyReceptionUI();
+    if(wasDisabled&&!receptionDisabled&&authenticatedShop)load();
+    return true;
+  }
+
+  async function checkReceptionState(){
+    const snap=await getDocFromServer(doc(db,"publicShops",shopId));
+    applyPublicShopSnapshot(snap);
+    return receptionStateKnown?receptionDisabled:null;
+  }
+
 
   async function loadShopSettings(){
     try{
       const snap=await getDoc(doc(db,"publicShops",shopId));
-      shopSettings=snap.exists()?{...defaultSettings,...snap.data()}:{...defaultSettings};
+      if(!applyPublicShopSnapshot(snap)){
+        shopSettings={...defaultSettings};
+      }
     }catch(e){
-      console.error(e);
-      shopSettings={...defaultSettings};
+      console.warn("会場設定の読み込みに失敗:",e);
+      // 通信エラーだけで受付OFFと判定しない。
     }
     document.getElementById("adminShopName").textContent=shopSettings.shopName||defaultSettings.shopName;
     document.getElementById("adminShopId").textContent=`shop=${shopId}`;
@@ -128,15 +190,30 @@
   const pinGate=document.getElementById('pinGate');
   document.getElementById('pinShop').textContent='営業所：'+shopId;
   document.getElementById('pinForm').addEventListener('submit',async e=>{
-    e.preventDefault(); const pin=document.getElementById('pinInput').value;
+    e.preventDefault();
+    if(receptionDisabled)return;
+    const pin=document.getElementById('pinInput').value;
     const errEl=document.getElementById('pinError');errEl.textContent='確認中…';
     try{const result=await loginShop({shopId,pin});await signInWithCustomToken(auth,result.data.token);errEl.textContent='';}
-    catch(err){errEl.textContent='認証できません。番号・利用状態をご確認ください。';}
+    catch(err){
+      console.error('営業所ログイン失敗',err);
+      try{await checkReceptionState();}catch(e){console.warn('受付状態確認失敗',e);}
+      if(receptionDisabled)return;
+      const code=String(err?.code||'').toLowerCase();
+      errEl.textContent=code.includes('failed-precondition')
+        ?'現在、この営業所の管理画面は利用できません。受付のON／OFF設定を本部管理者にご確認ください。'
+        :'ログインできませんでした。4桁PINまたは通信状態をご確認ください。';
+    }
   });
   onAuthStateChanged(auth,async user=>{
     if(user){const t=await user.getIdTokenResult();if(t.claims.shopId===shopId&&t.claims.role==='shop'){
-      pinGate.style.display='none';load();return;
-    }}pinGate.style.display='flex';clearPhotoCache();autoPrintQueue=[];queuedOrderIds.clear();if(unsubscribeOrders){unsubscribeOrders();unsubscribeOrders=null;}all=[];grid.innerHTML='';
+      authenticatedShop=true;
+      pinGate.style.display='none';
+      if(receptionDisabled)applyReceptionUI();else load();
+      return;
+    }}
+    authenticatedShop=false;
+    pinGate.style.display='flex';clearPhotoCache();autoPrintQueue=[];queuedOrderIds.clear();if(unsubscribeOrders){unsubscribeOrders();unsubscribeOrders=null;}all=[];grid.innerHTML='';
   });
   const imageCache=new Map();
   function clearPhotoCache(path){
@@ -206,6 +283,7 @@
   }
 
   autoPrintToggle.addEventListener("click",()=>{
+    if(receptionDisabled)return;
     if(!autoPrintEnabled){
       const ok=confirm(
         "このPCを自動印刷用にしますか？\n\n" +
@@ -229,6 +307,10 @@
     grid.innerHTML="";
     try{
       await loadShopSettings();
+      if(receptionDisabled){
+        applyReceptionUI();
+        return;
+      }
 
       if(unsubscribeOrders){
         unsubscribeOrders();
@@ -239,12 +321,14 @@
       const q=query(collection(db,"orders"),where("shopId","==",shopId));
 
       unsubscribeOrders=onSnapshot(q,async snap=>{
+        if(receptionDisabled)return;
         all=snap.docs
           .map(d=>({id:d.id,...d.data()}))
           .filter(o=>o.source===SOURCE)
           .sort((a,b)=>tsVal(b.createdAt)-tsVal(a.createdAt));
 
         await Promise.all(all.map(hydrate));
+        if(receptionDisabled)return; // 読込中に本部がOFFへ切り替えた場合
         render();
 
         // 最初の読み込み時は、既存の未印刷を自動印刷しない。
@@ -269,17 +353,22 @@
             }
           }
         }
-      },err=>{
+      },async err=>{
         console.error(err);
+        // Firestoreの権限エラーは受付OFFで発生することがあるため、先に設定を確認。
+        try{await checkReceptionState();}catch(e){console.warn("受付状態を確認できません:",e);}
+        if(receptionDisabled)return;
         all=[];clearPhotoCache();grid.innerHTML="";
         stats.textContent="読み込みに失敗しました。Firebaseの権限・通信を確認してください。";
-        grid.innerHTML='<div class="empty">データを取得できませんでした。</div>';
+        grid.innerHTML='<div class="empty">データを取得できませんでした。通信状態やログイン状態を確認してください。</div>';
         setAutoPrintStatus("受付の監視に失敗しました。通信状態を確認してください。","error");
       });
     }catch(e){
       console.error(e);
+      try{await checkReceptionState();}catch(checkErr){console.warn("受付状態を確認できません:",checkErr);}
+      if(receptionDisabled)return;
       stats.textContent="読み込みに失敗しました。Firebaseの権限・通信を確認してください。";
-      grid.innerHTML='<div class="empty">データを取得できませんでした。</div>';
+      grid.innerHTML='<div class="empty">データを取得できませんでした。通信状態やログイン状態を確認してください。</div>';
       setAutoPrintStatus("受付の監視を開始できませんでした。","error");
     }
   }
@@ -425,7 +514,7 @@
   }
 
   function enqueueAutoPrint(order){
-    if(!autoPrintEnabled)return;
+    if(!autoPrintEnabled||receptionDisabled)return;
     if(queuedOrderIds.has(order.id))return;
     queuedOrderIds.add(order.id);
     autoPrintQueue.push(order);
@@ -464,7 +553,7 @@
   }
 
   async function processAutoPrintQueue(){
-    if(autoPrintBusy || !autoPrintEnabled)return;
+    if(autoPrintBusy || !autoPrintEnabled || receptionDisabled)return;
     const next=autoPrintQueue.shift();
     if(!next)return;
 
@@ -526,6 +615,7 @@
     }
   }
   grid.addEventListener("click",async e=>{
+    if(receptionDisabled)return;
     const p=e.target.closest("[data-print]");
     if(p){
       printImage(p.dataset.print,p.dataset.orientation||"portrait");
@@ -578,7 +668,23 @@
     }
   });
   document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-filter]").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.filter;render();}));
-  document.getElementById("refresh").addEventListener("click",load);
+  document.getElementById("refresh").addEventListener("click",async()=>{
+    try{await checkReceptionState();}catch(e){console.warn("受付状態再確認失敗",e);}
+    if(!receptionDisabled&&authenticatedShop)load();
+  });
+  document.getElementById("recheckReception").addEventListener("click",async()=>{
+    const btn=document.getElementById("recheckReception");btn.disabled=true;
+    try{
+      await checkReceptionState();
+      if(!receptionDisabled&&authenticatedShop)load();
+    }catch(e){console.warn("受付状態再確認失敗",e);alert("受付状況を確認できませんでした。通信状態を確認してください。");}
+    finally{btn.disabled=false;}
+  });
+  // 開いたままの画面でも受付ON/OFFの変更を検知する。
+  onSnapshot(doc(db,"publicShops",shopId),applyPublicShopSnapshot,err=>{
+    console.warn("受付状態の監視に失敗:",err);
+  });
+  loadShopSettings();
   // ログイン確認後にloadを実行
 </script>
 </body></html>

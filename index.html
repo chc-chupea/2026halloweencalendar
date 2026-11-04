@@ -100,6 +100,12 @@
     .status.sending{display:block;background:#fff4e6;color:#7a4300}
     .status.success{display:block;background:#ecf8f0;color:#205f3b}
     .status.error{display:block;background:#fff0ef;color:#9a221a}
+    .status.stopped{display:block;background:#fff4e8;color:#76431e}
+    .reception-notice{margin:0 0 16px;padding:20px;border:1px solid #f0d1a8;border-radius:18px;background:#fff4e8;color:#754012;box-shadow:var(--shadow);line-height:1.7}
+    .reception-notice strong{display:block;font-size:21px;margin-bottom:5px}
+    .reception-notice p{margin:0;font-size:14px}
+    .reception-notice[hidden]{display:none}
+    #sendBtn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
     .number{font-size:34px;letter-spacing:.08em;color:#173f2a;display:block;margin:7px 0}
     .privacy{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.55}
     .privacy input{margin-top:3px;transform:scale(1.2)}
@@ -362,6 +368,10 @@
 </head>
 <body>
   <main class="shell">
+    <div id="receptionNotice" class="reception-notice" role="status" aria-live="polite" hidden>
+      <strong>ただいま、カレンダーの受付を停止しています</strong>
+      <p>この営業所では、ただいま新しいお申し込みを受け付けていません。再開までお待ちください。</p>
+    </div>
     <section class="hero">
       <div class="shop-badge"><span class="code" id="shopCodeBadge">C</span><span id="shopNameBadge">会場を読み込み中…</span></div>
       <div class="hero-badge">HALLOWEEN PHOTO CALENDAR 2026</div>
@@ -495,7 +505,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, getDocFromServer, onSnapshot } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
 
     const firebaseConfig = {
@@ -573,6 +583,43 @@
       shopCode: "C"
     };
     let shopSettings = { ...defaultShopSettings };
+    let receptionDisabled = false;
+    let sendingInProgress = false;
+    let receptionStateKnown = false;
+
+    function updateReceptionUI(){
+      const notice=document.getElementById("receptionNotice");
+      notice.hidden=!receptionDisabled;
+      const send=document.getElementById("sendBtn");
+      send.disabled=receptionDisabled||sendingInProgress;
+      if(receptionDisabled){
+        send.title="現在この営業所では受付を停止しています";
+      }else{
+        send.removeAttribute("title");
+      }
+    }
+
+    function applyPublicShopSnapshot(snap){
+      if(!snap.exists())return false; // 営業所未登録を「受付OFF」と誤判定しない
+      const data=snap.data();
+      shopSettings={...defaultShopSettings,...data};
+      // 本部 owner.html のON/OFFは publicShops.enabled で判定する。
+      receptionStateKnown=typeof data.enabled==="boolean";
+      receptionDisabled=data.enabled===false;
+      document.getElementById("shopNameBadge").textContent=shopSettings.shopName||defaultShopSettings.shopName;
+      document.getElementById("shopCodeBadge").textContent=getShopCode();
+      document.title=`${shopSettings.shopName||defaultShopSettings.shopName}｜ハロウィン フォトカレンダー`;
+      updateReceptionUI();
+      return true;
+    }
+
+    async function checkReceptionState(){
+      // 申込直前はキャッシュでなくサーバー上の最新設定を確認する。
+      const snap=await getDocFromServer(doc(db,"publicShops",shopId));
+      applyPublicShopSnapshot(snap);
+      return receptionStateKnown ? receptionDisabled : null;
+    }
+
 
     function getShopCode(){
       const raw = shopSettings?.shopCode || defaultShopSettings.shopCode || String(shopId).slice(0,1);
@@ -582,9 +629,7 @@
     async function loadShopSettings(){
       try{
         const snap = await getDoc(doc(db,"publicShops",shopId));
-        shopSettings = snap.exists()
-          ? { ...defaultShopSettings, ...snap.data() }
-          : { ...defaultShopSettings };
+        if(!applyPublicShopSnapshot(snap))shopSettings={...defaultShopSettings};
       }catch(err){
         console.error("会場設定の読み込みに失敗:",err);
         shopSettings = { ...defaultShopSettings };
@@ -596,6 +641,11 @@
     }
 
     const shopSettingsReady = loadShopSettings();
+    // 本部による受付ON/OFFの変更を、開いたままの画面にも反映する。
+    onSnapshot(doc(db,"publicShops",shopId),applyPublicShopSnapshot,err=>{
+      console.warn("受付状態の監視に失敗:",err);
+      // 通信障害を受付OFFとして扱わない。送信直前はサーバーで再確認する。
+    });
 
     const canvas = document.getElementById("calendarCanvas");
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -1684,14 +1734,49 @@
     function setStatus(type,html){statusEl.className=`status ${type}`;statusEl.innerHTML=html;}
 
     document.getElementById("sendBtn").addEventListener("click",async()=>{
+      if(receptionDisabled){
+        setStatus("stopped","現在、この営業所はカレンダーの受付を停止しています。<br>再開までお待ちください。");
+        return;
+      }
+      if(sendingInProgress)return;
       if(!photo){alert("先に写真を選んでください。");return;}
       if(!document.getElementById("consent").checked){alert("保存についての同意欄を確認してください。");return;}
       const copies=Number(document.getElementById("copies").value||1);
-      await shopSettingsReady;
-      if(!confirm(`${shopSettings.shopName || defaultShopSettings.shopName}へ\nこのカレンダーを ${copies}枚 で送信します。\n送信後は変更できません。よろしいですか？`)) return;
-
       const btn=document.getElementById("sendBtn");
-      btn.disabled=true;
+      sendingInProgress=true;
+      updateReceptionUI();
+      setStatus("sending","受付状況を確認しています…");
+      try{
+        await shopSettingsReady;
+        // 設定の再取得ができなくても、既存の受付経路は止めない。
+        // 最終的な受付可否は Cloud Functions の reserveOrder が判断する。
+        const disabled=await checkReceptionState().catch(err=>{
+          console.warn("受付状態を確認できません（サーバー側で受付可否を判定します）:",err);
+          return null;
+        });
+        if(disabled){
+          setStatus("stopped","現在、この営業所はカレンダーの受付を停止しています。<br>申し込みは送信されていません。再開までお待ちください。");
+          return;
+        }
+        if(!confirm(`${shopSettings.shopName || defaultShopSettings.shopName}へ\nこのカレンダーを ${copies}枚 で送信します。\n送信後は変更できません。よろしいですか？`)){
+          setStatus("","");
+          return;
+        }
+      }catch(err){
+        console.error("受付状態の事前確認に失敗:",err);
+        setStatus("error","受付状況を確認できませんでした。<br>通信状態をご確認のうえ、時間をおいてお試しください。");
+        return;
+      }finally{
+        // ここではまだ送信開始前。確認中だけボタンをロックする。
+        sendingInProgress=false;
+        updateReceptionUI();
+      }
+      if(receptionDisabled){
+        setStatus("stopped","受付が停止されたため、送信できません。<br>お申し込みは完了していません。");
+        return;
+      }
+      sendingInProgress=true;
+      updateReceptionUI();
       setStatus("sending","送信しています…<br>受付番号が表示されるまで、この画面を閉じないでください。");
 
       let issued=null;
@@ -1724,9 +1809,20 @@
 
         if(orderRef){try{await finalizeOrder({orderId:orderRef,error:true});}catch(e){console.error(e);}}
 
-        const no = issued?.shortId ? `<br>受付番号：<b>${issued.shortId}</b>` : "";
-        setStatus("error",`送信が完了していません。${no}<br>通信状態を確認して、もう一度送信してください。<br><small>${String(err?.code||err?.message||"")}</small>`);
-        btn.disabled=false;
+        const code=String(err?.code||"").toLowerCase();
+        if(code.includes("failed-precondition")){
+          // 停止・受付条件不成立は通信エラーとは別表示。詳細コードはお客様へ出さない。
+          try{await checkReceptionState();}catch(e){console.warn("受付状態の再確認に失敗:",e);}
+          setStatus("stopped",receptionDisabled
+            ? "現在、この営業所はカレンダーの受付を停止しています。<br>お申し込みは完了していません。再開までお待ちください。"
+            : "現在、この営業所ではお申し込みを受け付けられません。<br>お申し込みは完了していません。営業所に受付状況をご確認ください。");
+        }else{
+          const no=issued?.shortId?`<br>発行された番号：<b>${issued.shortId}</b>（受付未完了）`:"";
+          setStatus("error",`送信が完了していません。${no}<br>通信状態をご確認のうえ、もう一度お試しください。`);
+        }
+      }finally{
+        sendingInProgress=false;
+        updateReceptionUI();
       }
     });
 
