@@ -167,8 +167,9 @@
     const data=snap.data();
     const wasDisabled=receptionDisabled;
     shopSettings={...defaultSettings,...data};
-    receptionStateKnown=typeof data.enabled==="boolean";
-    receptionDisabled=data.enabled===false;
+    // Cloud Functions が使用する publicShops/{shopId}.active を参照する。
+    receptionStateKnown=typeof data.active==="boolean";
+    receptionDisabled=receptionStateKnown && data.active===false;
     document.getElementById("adminShopName").textContent=shopSettings.shopName||defaultSettings.shopName;
     document.getElementById("adminShopId").textContent=`shop=${shopId}`;
     document.getElementById("adminTitle").textContent=`${shopSettings.shopName||defaultSettings.shopName}｜印刷受付`;

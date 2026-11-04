@@ -77,7 +77,7 @@ button.danger{background:#8a3942}
 <h2>受付のON／OFF</h2><div class="button-row"><button id="on" type="button">受付ON</button><button id="off" class="danger" type="button">受付OFF</button></div>
 <p class="note">受付をOFFにすると新規受付・スタッフのデータ操作を制限します。写真自体は削除しません。</p>
 <div id="publicReceptionStatus" role="status" aria-live="polite" style="margin-top:12px;padding:13px;border:1px solid #e9d8ae;border-radius:12px;background:#fffaed;color:#5f4320;font-size:13px;line-height:1.65">公開画面の受付状態を確認しています…</div>
-<div class="button-row"><button id="checkPublicReception" class="outline" type="button">お客様・営業所画面への反映を確認</button></div>
+<div class="button-row"><button id="checkPublicReception" class="outline" type="button">受付状態（active）を確認</button></div>
 <div class="divider"></div>
 <h2>4桁PINを忘れたとき</h2>
 <p class="note">現在のPINはセキュリティ上、表示・復元できません。新しいPINに再設定してください。再設定しても受付ON／OFFの状態は変わりません。</p>
@@ -96,7 +96,7 @@ button.danger{background:#8a3942}
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
 import {getFunctions,httpsCallable} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-functions.js';
-import {getFirestore,doc,getDocFromServer,setDoc} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+import {getFirestore,doc,getDocFromServer} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
 const config={"apiKey":"AIzaSyBYEoKq_XKcAiRNsYQSI3HsohQif4QYKaw","authDomain":"halloween-calendar-2026.firebaseapp.com","projectId":"halloween-calendar-2026","storageBucket":"halloween-calendar-2026.firebasestorage.app","messagingSenderId":"378243003557","appId":"1:378243003557:web:d726b35327e5903f5a894c"};
 // Firebase Auth の保存状態を営業所管理画面から独立させる。
@@ -128,15 +128,15 @@ function publicStatus(text,kind='checking'){
  }[kind]||['#fff9e9','#654b20','#ecdca5'];
  el.style.background=style[0];el.style.color=style[1];el.style.borderColor=style[2];
 }
-// 公開ページが参照する publicShops/{shopId}.enabled を実データから検証する。
+// Cloud Functions が使用する publicShops/{shopId}.active の状態を確認する。
 async function checkPublicReception(shopId,expected){
  if(!shopId)return {ok:false,detail:'営業所を選んでください。'};
  const snap=await getDocFromServer(doc(db,'publicShops',shopId));
  if(!snap.exists())return {ok:false,detail:`publicShops/${shopId} がありません。`};
- const enabled=snap.data()?.enabled;
- if(typeof enabled!=='boolean')return {ok:false,detail:`publicShops/${shopId} の enabled（真偽値）がありません。`};
- if(enabled!==expected)return {ok:false,detail:`本部は受付${expected?'ON':'OFF'}ですが、公開画面に渡る値は受付${enabled?'ON':'OFF'}です。`};
- return {ok:true,detail:`公開画面も受付${enabled?'ON':'OFF'}に同期されています。`};
+ const active=snap.data()?.active;
+ if(typeof active!=='boolean')return {ok:false,detail:`publicShops/${shopId} の active（真偽値）がありません。`};
+ if(active!==expected)return {ok:false,detail:`本部は受付${expected?'ON':'OFF'}ですが、公開画面に渡る値は受付${active?'ON':'OFF'}です。`};
+ return {ok:true,detail:`公開画面も受付${active?'ON':'OFF'}に同期されています。`};
 }
 async function displayPublicReception(shopId,expected){
  publicStatus('公開画面の受付状態を確認しています…');
@@ -150,21 +150,10 @@ async function displayPublicReception(shopId,expected){
   return {ok:false,detail};
  }
 }
-// Firebase Functions が公開状態まで同期していない場合に限って、
-// 本部認証済みクライアントによる更新を試みる。権限がない場合は明示して中断する。
+// Firestoreへの直接書き込みは行わない。更新は既存の認証済み
+// Cloud Functions setShopEnabled が行い、この画面では結果を確認するだけ。
 async function ensurePublicReception(shopId,enabled){
- const before=await displayPublicReception(shopId,enabled);
- if(before.ok)return before;
- try{
-  await setDoc(doc(db,'publicShops',shopId),{enabled},{merge:true});
-  return await displayPublicReception(shopId,enabled);
- }catch(err){
-  const result=await displayPublicReception(shopId,enabled);
-  if(result.ok)return result;
-  const detail=`公開画面への状態反映ができませんでした（${issue(err)}）。Firebase側の setShopEnabled が publicShops/{shopId}.enabled も更新する必要があります。`;
-  if(selected===shopId)publicStatus('⚠ '+detail,'error');
-  return {ok:false,detail};
- }
+ return await displayPublicReception(shopId,enabled);
 }
 function selectShop(entry){
  selected=entry?.shopId||null;

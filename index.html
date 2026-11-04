@@ -611,9 +611,9 @@
       if(!snap.exists())return false; // 営業所未登録を「受付OFF」と誤判定しない
       const data=snap.data();
       shopSettings={...defaultShopSettings,...data};
-      // 本部 owner.html のON/OFFは publicShops.enabled で判定する。
-      receptionStateKnown=typeof data.enabled==="boolean";
-      receptionDisabled=data.enabled===false;
+      // Cloud Functions が使用する publicShops/{shopId}.active を参照する。
+      receptionStateKnown=typeof data.active==="boolean";
+      receptionDisabled=receptionStateKnown && data.active===false;
       document.getElementById("shopNameBadge").textContent=shopSettings.shopName||defaultShopSettings.shopName;
       document.getElementById("shopCodeBadge").textContent=getShopCode();
       document.title=`${shopSettings.shopName||defaultShopSettings.shopName}｜ハロウィン フォトカレンダー`;
